@@ -49,10 +49,46 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
-DARROW          =>
-ASSIGN			<-
+/* White Spaces */
+NEWLINE 			[\n]
+BLANK_CHAR			[ \f\r\t\v]+	/* whitespaces except newlines */
+
+
+/* Regex for keywords */
+CLASS 				(?i:class)
+ELSE 				(?i:else)
+IF 					(?i:if)
+IN 					(?i:inherits)
+INHERITS 			(?i:inherits)
+LET 				(?i:let)
+LOOP 				(?i:loop)
+POOL 				(?i:pool) 				
+THEN 				(?i:then)
+WHILE 				(?i:while)
+CASE 				(?i:case)
+ESAC 				(?i:esac)
+OF 					(?i:of)
+NEW 				(?i:new)
+ISVOID 				(?i:isvoid)
+NOT 				(?i:not)
+BOOL_TRUE 			t(?i:rue)
+BOOL_FALSE 			f(?i:alse)
+
+
+DIGIT				[0-9]
+INTEGER				{DIGIT}+
+LETTER 				[a-zA-Z]
+DARROW          	=>
+ASSIGN				<-
+LE 					<=		/* Less than or eql */
 
 %%
+
+
+
+
+
+
 
  /*
   *  Nested comments
@@ -62,17 +98,29 @@ ASSIGN			<-
  /*
   *  The multiple-character operators.
   */
-{DARROW}		{ return (DARROW); }
-{ASSIGN}		{ return (ASSIGN); }
+{DARROW}			{ return (DARROW); }
+{ASSIGN}			{ return (ASSIGN); }
+{LE}				{ return (LE);}
 
 /*
  *	The single-character operators
  */
+';'					{ return (';'); }
+':'					{ return (':'); }
+'('					{ return ('('); }
+')'					{ return (')'); }
+'{'					{ return ('{'); }
+'}'					{ return ('}'); }
+'+'					{ return ('+'); }
+'-'					{ return ('-'); }
+'*'					{ return ('*'); }
+'/'					{ return ('/'); }
+'~'					{ return ('~'); }
+'<'					{ return ('<'); }
+'='					{ return ('='); }
+'@'					{ return ('@'); }
 
-';'				{ return (';'); }
-':'				{ return (':'); }
-'('				{ return ('('); }
-')'				{ return (')'); }
+
 
 
  /*
@@ -80,22 +128,38 @@ ASSIGN			<-
   * which must begin with a lower-case letter.
   */
 
-'(?i:class)'		{ return (CLASS); }
-'(?i:else)'			{ return (ELSE); }
-'(?i:if)'			{ return (IF); }
-'(?i:in)'			{ return (IN); }
-'(?i:inherits)'		{ return (INHERITS); }
-'(?i:let)'			{ return (LET); }
-'(?i:loop)'			{ return (LOOP); }
-'(?i:pool)'			{ return (POOL); }
-'(?i:then)'			{ return (THEN); }
-'(?i:while)'		{ return (WHILE); }
-'(?i:case)'			{ return (CASE); }
-'(?i:esac)'			{ return (ESAC); }
-'(?i:of)'			{ return (OF); }
-'(?i:new)'			{ return (NEW); }
-'(?i:isvoid)'		{ return (ISVOID); }
-'(?i:if)'			{ return (IF); }
+{CLASS} 			{ return (CLASS); }
+{ELSE}				{ return (ELSE); }
+{IF}				{ return (IF); }
+{IN}				{ return (IN); }
+{INHERITS}			{ return (INHERITS); }
+{LET}				{ return (LET); }
+{LOOP}	 			{ return (LOOP); }
+{POOL}				{ return (POOL); }
+{THEN}				{ return (THEN); }
+{WHILE}	 			{ return (WHILE); }
+{CASE}	 			{ return (CASE); }
+{ESAC}	 			{ return (ESAC); }
+{OF}				{ return (OF); }
+{NEW}				{ return (NEW); }
+{ISVOID}			{ return (ISVOID); }
+{NOT}				{ return (NOT); }
+{BOOL_TRUE}			{ 
+						cool.yylval.boolean = true;
+						return BOOL_CONST;
+					}
+{BOOL_FALSE}		{ 
+						cool.yylval.boolean = false;
+						return BOOL_CONST; 
+					}
+
+
+
+{NEWLINE} 			{ curr_lineno++; }
+
+{BLANK_CHAR} 		{}	/* Ignore blank characters */
+
+
 
 
 
