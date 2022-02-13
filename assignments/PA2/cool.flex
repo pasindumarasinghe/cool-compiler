@@ -39,35 +39,45 @@ extern int verbose_flag;
 
 extern YYSTYPE cool_yylval;
 
-/*
+ /*
  *  Add Your own definitions here
  */
+int comment_depth;
+int str_length;
+
 
 %}
-/* 
-===============
-  DEFINITIONS
-===============
-*/
 
-/* start conditions */
+%option noyywrap
+
+ /*
+ *	Start conditions
+ */
+
 %x 							single_comment
 %x							multi_comment
+%x 							string
+%x 							hold_string_buffer
 
 
-/*
+ /*
  * Define names for regular expressions here.
  */
 
-/* White Spaces */
+ /*
+ *	Whitespaces
+ */
 NEWLINE 					[\n]
 BLANK_CHAR					[ \f\r\t\v]+
 
-/* Regex for keywords */
+ /*
+ *	Regex for keywords
+ */
+
 CLASS 						(?i:class)
 ELSE 						(?i:else)
 IF 							(?i:if)
-IN 							(?i:inherits)
+IN 							(?i:in)
 INHERITS 					(?i:inherits)
 LET 						(?i:let)
 LOOP 						(?i:loop)
@@ -87,8 +97,8 @@ DARROW          			=>
 ASSIGN						<-
 LE 							<=
 SINGLE_COMMENT_BEGIN		--
-MULTI_COMMENT_BEGIN			(\*
-MULTI_COMMENT_END 			\*)
+MULTI_COMMENT_BEGIN			"(\*"
+MULTI_COMMENT_END 			"\*)"
 STR_BEGIN					\"
 STR_END 					\"
 
@@ -99,48 +109,38 @@ INTEGER						{DIGIT}+
 LETTER 						[a-zA-Z]
 TYPEID 						[A-Z][a-zA-Z0-9_]*
 OBJECTID 					[a-z][a-zA-Z0-9_]*
-
-
-
 %%
 
-
-/* 
-*=========
-*  RULES
-*=========
-*/
-
  /*
-  *  Nested comments
+  * Nested comments
   */
 
 
  /*
-  *  The multiple-character operators.
+  * The multiple-character operators.
   */
 {DARROW}					{ return (DARROW); }
 {ASSIGN}					{ return (ASSIGN); }
 {LE}						{ return (LE); }
 
-/*
- *	The single-character operators
+ /*
+ * The single-character operators
  */
 
-';'							{ return ';'; }
-':'							{ return ':'; }
-'('							{ return '('; }
-')'							{ return ')'; }
-'{'							{ return '{'; }
-'}'							{ return '}'; }
-'+'							{ return '+'; }
-'-'							{ return '-'; }
-'*'							{ return '*'; }
-'/'							{ return '/'; }
-'~'							{ return '~'; }
-'<'							{ return '<'; }
-'='							{ return '='; }
-'@'							{ return '@'; }
+";"							{ return ';'; }
+":"							{ return ':'; }
+"("							{ return '('; }
+")"							{ return ')'; }
+"{"							{ return '{'; }
+"}"							{ return '}'; }
+"+"							{ return '+'; }
+"-"							{ return '-'; }
+"*"							{ return '*'; }
+"/"							{ return '/'; }
+"~"							{ return '~'; }
+"<"							{ return '<'; }
+"="							{ return '='; }
+"@"							{ return '@'; }
 
 
 
@@ -167,11 +167,11 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 {ISVOID}					{ return (ISVOID); }
 {NOT}						{ return (NOT); }
 {BOOL_TRUE}					{ 
-								cool.yylval.boolean = true;
+								cool_yylval.boolean = true;
 								return BOOL_CONST;
 							}
 {BOOL_FALSE}				{ 
-								cool.yylval.boolean = false;
+								cool_yylval.boolean = false;
 							return BOOL_CONST; 
 							}
 
@@ -184,54 +184,166 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 
 
 
-/*
+ /*
   *  String constants (C syntax)
   *  Escape sequence \c is accepted for all characters c. Except for 
   *  \n \t \b \f, the result is c.
   *
   */
 
-/* String constants */
+ /*
+ * Comments
+ */
+
+ /* single line comments */
+
+<INITIAL>{SINGLE_COMMENT_BEGIN}	{ BEGIN(single_comment); }
+	
+<single_comment>{
+	. {}
+	\n 	{ curr_lineno++; BEGIN(INITIAL);}
+}
+
+ /* multiline comments */
+<INITIAL>{MULTI_COMMENT_BEGIN} { comment_depth++; BEGIN(multi_comment);}	
+
+<multi_comment>{
+	{MULTI_COMMENT_BEGIN}	{ comment_depth++; }
+	{MULTI_COMMENT_END}		{ 
+		comment_depth--;
+		if(comment_depth == 0) BEGIN(INITIAL);
+	}
+
+	<<EOF>>	{
+		cool_yylval.error_msg = "EOF in comment";
+		BEGIN(INITIAL);
+		return(ERROR);
+	}
+
+	<multi_comment>\n 	{
+		curr_lineno++;
+	}
+
+	<multi_comment>.
 
 
 
-/* Integers */
+}
+
+
+{MULTI_COMMENT_END}	{
+	cool_yylval.error_msg = "Unmatched *)";
+	return(ERROR);
+}
+
+
+ /*
+ * String constants
+ */
+
+{STR_BEGIN}		{ BEGIN(string); }
+
+<string>{
+	{STR_END}	{ BEGIN(INITIAL); }
+	
+	
+	\n 		{
+		curr_lineno++;
+		cool_yylval.error_msg = "Unterminated string constant";
+		BEGIN(INITIAL);
+		return(ERROR);
+	}
+
+	\0		{
+		string_buf[str_length] = '0';
+		str_length++;
+		cool_yylval.error_msg = "String contains null character";
+		return(ERROR);
+	}
+
+	\\n 	{
+
+		if(str_length+1 >= MAX_STR_CONST){
+			cool_yylval.error_msg = "String constant too long";
+			str_length = 0;
+			BEGIN(hold_string_buffer);
+			return(ERROR);
+		} else {
+			string_buf[str_length] = '\n';
+			str_length++;
+			curr_lineno++; 
+		}
+
+	}
+	\\b 	{
+
+		if(str_length+1 >= MAX_STR_CONST){
+			cool_yylval.error_msg = "String constant too long";
+			str_length = 0;
+			BEGIN(hold_string_buffer);
+			return(ERROR);
+		} else {
+			string_buf[str_length] = '\b';
+			str_length++;
+		}
+
+	}
+
+	\\t 	{
+
+		if(str_length+1 >= MAX_STR_CONST){
+			cool_yylval.error_msg = "String constant too long";
+			str_length = 0;
+			BEGIN(hold_string_buffer);
+			return(ERROR);
+		} else{
+			string_buf[str_length] = '\t';
+			str_length++;
+		}
+
+	}				
+
+	<<EOF>>	{
+		cool_yylval.error_msg = "EOF in string constant";
+		BEGIN(INITIAL);
+		return(ERROR);
+	}
+}
+
+
+ /*
+ * Integers
+ */
+
 {INTEGER} 					{
-								cool.yylval.symbol = inttable.add_string(yytext);
+								cool_yylval.symbol = inttable.add_string(yytext);
 								return(INT_CONST);
 							}		
 
-/* Identifiers */
+ /*
+ * Identifiers
+ */
+
 {TYPEID}					{
-								cool.yylval.symbol = idtable.add_string(yytext);
+								cool_yylval.symbol = idtable.add_string(yytext);
 								return(TYPEID);
 							}	
 
 {OBJECTID}					{
-								cool.yylval.symbol = idtable.add_string(yytext);
+								cool_yylval.symbol = idtable.add_string(yytext);
 								return(OBJECTID);
 							}
 
 
-/* Comments */
-
-/* single line comments */
-
-<SINGLE_COMMENT_BEGIN> 		{ BEGIN(single_comment); }
-<single_comment>			{}
-<single_comment>\n 			{
-								curr_lineno++;
-								BEGIN(INITIAL);
-							} 
-
-<MULTI_COMMENT_BEGIN>		{ BEGIN(multi_comment); }
 
 
+ /*
+ * When no rule matches
+ */
 
-
-.							{
-								cool.yylval.error_msg = yytext;
-								return(ERROR);
-							}
+. {
+	cool_yylval.error_msg = yytext;
+	return(ERROR);
+}
 
 %%
