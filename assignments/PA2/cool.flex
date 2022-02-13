@@ -44,56 +44,61 @@ extern YYSTYPE cool_yylval;
  */
 
 %}
-
-
 /* 
 ===============
   DEFINITIONS
 ===============
 */
 
+/* start conditions */
+%x 							single_comment
+%x							multi_comment
+
+
 /*
  * Define names for regular expressions here.
  */
 
 /* White Spaces */
-NEWLINE 				[\n]
-BLANK_CHAR				[ \f\r\t\v]+	/* whitespaces except newlines */
-
+NEWLINE 					[\n]
+BLANK_CHAR					[ \f\r\t\v]+
 
 /* Regex for keywords */
-CLASS 					(?i:class)
-ELSE 					(?i:else)
-IF 						(?i:if)
-IN 						(?i:inherits)
-INHERITS 				(?i:inherits)
-LET 					(?i:let)
-LOOP 					(?i:loop)
-POOL 					(?i:pool) 				
-THEN 					(?i:then)
-WHILE 					(?i:while)
-CASE 					(?i:case)
-ESAC 					(?i:esac)
-OF 						(?i:of)
-NEW 					(?i:new)
-ISVOID 					(?i:isvoid)
-NOT 					(?i:not)
-BOOL_TRUE 				t(?i:rue)
-BOOL_FALSE 				f(?i:alse)
+CLASS 						(?i:class)
+ELSE 						(?i:else)
+IF 							(?i:if)
+IN 							(?i:inherits)
+INHERITS 					(?i:inherits)
+LET 						(?i:let)
+LOOP 						(?i:loop)
+POOL 						(?i:pool) 				
+THEN 						(?i:then)
+WHILE 						(?i:while)
+CASE 						(?i:case)
+ESAC 						(?i:esac)
+OF 							(?i:of)
+NEW 						(?i:new)
+ISVOID 						(?i:isvoid)
+NOT 						(?i:not)
+BOOL_TRUE 					t(?i:rue)
+BOOL_FALSE 					f(?i:alse)
 
-DARROW          		=>
-ASSIGN					<-
-LE 						<=		/* Less than or eql */
-SINGLE_COMMENT			--
-COMMENT_BEGIN 			(*
-COMMENT_END 			*)
+DARROW          			=>
+ASSIGN						<-
+LE 							<=
+SINGLE_COMMENT_BEGIN		--
+MULTI_COMMENT_BEGIN			(\*
+MULTI_COMMENT_END 			\*)
+STR_BEGIN					\"
+STR_END 					\"
 
 
-DIGIT					[0-9]
-INTEGER					{DIGIT}+
-LETTER 					[a-zA-Z]
-TYPEID 					[A-Z][a-zA-Z0-9_]*
-OBJECTID 				[a-z][a-zA-Z0-9_]*
+
+DIGIT						[0-9]
+INTEGER						{DIGIT}+
+LETTER 						[a-zA-Z]
+TYPEID 						[A-Z][a-zA-Z0-9_]*
+OBJECTID 					[a-z][a-zA-Z0-9_]*
 
 
 
@@ -101,9 +106,9 @@ OBJECTID 				[a-z][a-zA-Z0-9_]*
 
 
 /* 
-=========
-  RULES
-=========
+*=========
+*  RULES
+*=========
 */
 
  /*
@@ -114,27 +119,28 @@ OBJECTID 				[a-z][a-zA-Z0-9_]*
  /*
   *  The multiple-character operators.
   */
-{DARROW}				{ return (DARROW); }
-{ASSIGN}				{ return (ASSIGN); }
-{LE}					{ return (LE); }
+{DARROW}					{ return (DARROW); }
+{ASSIGN}					{ return (ASSIGN); }
+{LE}						{ return (LE); }
 
 /*
  *	The single-character operators
  */
-';'						{ return (';'); }
-':'						{ return (':'); }
-'('						{ return ('('); }
-')'						{ return (')'); }
-'{'						{ return ('{'); }
-'}'						{ return ('}'); }
-'+'						{ return ('+'); }
-'-'						{ return ('-'); }
-'*'						{ return ('*'); }
-'/'						{ return ('/'); }
-'~'						{ return ('~'); }
-'<'						{ return ('<'); }
-'='						{ return ('='); }
-'@'						{ return ('@'); }
+
+';'							{ return ';'; }
+':'							{ return ':'; }
+'('							{ return '('; }
+')'							{ return ')'; }
+'{'							{ return '{'; }
+'}'							{ return '}'; }
+'+'							{ return '+'; }
+'-'							{ return '-'; }
+'*'							{ return '*'; }
+'/'							{ return '/'; }
+'~'							{ return '~'; }
+'<'							{ return '<'; }
+'='							{ return '='; }
+'@'							{ return '@'; }
 
 
 
@@ -144,35 +150,35 @@ OBJECTID 				[a-z][a-zA-Z0-9_]*
   * which must begin with a lower-case letter.
   */
 
-{CLASS} 				{ return (CLASS); }
-{ELSE}					{ return (ELSE); }
-{IF}					{ return (IF); }
-{IN}					{ return (IN); }
-{INHERITS}				{ return (INHERITS); }
-{LET}					{ return (LET); }
-{LOOP}	 				{ return (LOOP); }
-{POOL}					{ return (POOL); }
-{THEN}					{ return (THEN); }
-{WHILE}	 				{ return (WHILE); }
-{CASE}	 				{ return (CASE); }
-{ESAC}	 				{ return (ESAC); }
-{OF}					{ return (OF); }
-{NEW}					{ return (NEW); }
-{ISVOID}				{ return (ISVOID); }
-{NOT}					{ return (NOT); }
-{BOOL_TRUE}				{ 
-							cool.yylval.boolean = true;
-							return BOOL_CONST;
-						}
-{BOOL_FALSE}			{ 
-							cool.yylval.boolean = false;
+{CLASS} 					{ return (CLASS); }
+{ELSE}						{ return (ELSE); }
+{IF}						{ return (IF); }
+{IN}						{ return (IN); }
+{INHERITS}					{ return (INHERITS); }
+{LET}						{ return (LET); }
+{LOOP}	 					{ return (LOOP); }
+{POOL}						{ return (POOL); }
+{THEN}						{ return (THEN); }
+{WHILE}	 					{ return (WHILE); }
+{CASE}	 					{ return (CASE); }
+{ESAC}	 					{ return (ESAC); }
+{OF}						{ return (OF); }
+{NEW}						{ return (NEW); }
+{ISVOID}					{ return (ISVOID); }
+{NOT}						{ return (NOT); }
+{BOOL_TRUE}					{ 
+								cool.yylval.boolean = true;
+								return BOOL_CONST;
+							}
+{BOOL_FALSE}				{ 
+								cool.yylval.boolean = false;
 							return BOOL_CONST; 
-						}
+							}
 
 
 
-{NEWLINE} 				{ curr_lineno++; }
-{BLANK_CHAR} 			{}	/* Ignore blank characters */
+{NEWLINE} 					{ curr_lineno++; }
+{BLANK_CHAR} 				{}
 
 
 
@@ -190,31 +196,42 @@ OBJECTID 				[a-z][a-zA-Z0-9_]*
 
 
 /* Integers */
-{INTEGER} 				{
-							cool.yylval.symbol = inttable.add_string(yytext);
-							return(INT_CONST);
-						}		
+{INTEGER} 					{
+								cool.yylval.symbol = inttable.add_string(yytext);
+								return(INT_CONST);
+							}		
 
 /* Identifiers */
-{TYPEID}				{
-							cool.yylval.symbol = idtable.add_string(yytext);
-							return(TYPEID);
-						}	
+{TYPEID}					{
+								cool.yylval.symbol = idtable.add_string(yytext);
+								return(TYPEID);
+							}	
 
-{OBJECTID}				{
-							cool.yylval.symbol = idtable.add_string(yytext);
-							return(OBJECTID);
-						}
-
-
+{OBJECTID}					{
+								cool.yylval.symbol = idtable.add_string(yytext);
+								return(OBJECTID);
+							}
 
 
+/* Comments */
+
+/* single line comments */
+
+<SINGLE_COMMENT_BEGIN> 		{ BEGIN(single_comment); }
+<single_comment>			{}
+<single_comment>\n 			{
+								curr_lineno++;
+								BEGIN(INITIAL);
+							} 
+
+<MULTI_COMMENT_BEGIN>		{ BEGIN(multi_comment); }
 
 
 
-.						{
-							cool.yylval.error_msg = yytext;
-							return(ERROR);
-						}
+
+.							{
+								cool.yylval.error_msg = yytext;
+								return(ERROR);
+							}
 
 %%

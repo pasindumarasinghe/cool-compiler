@@ -19,7 +19,7 @@ OUTPUT= test.output
 CPPINCLUDE= -I. -I${CLASSDIR}/include/PA${ASSN} -I${CLASSDIR}/src/PA${ASSN}
 
 
-FFLAGS= -d -o cool-lex.cc
+FFLAGS= -d -ocool-lex.cc
 
 CC=g++
 CFLAGS= -g -Wall -Wno-unused -Wno-write-strings ${CPPINCLUDE}
