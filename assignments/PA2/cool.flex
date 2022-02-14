@@ -228,13 +228,11 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 		return(ERROR);
 	}
 
-	<multi_comment>\n 	{
+	\n 	{
 		curr_lineno++;
 	}
 
-	<multi_comment>.
-
-
+	.
 
 }
 
