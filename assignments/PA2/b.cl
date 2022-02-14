@@ -1,3 +1,1 @@
-Pasinud
-(* asd (* elama ela *) *)
-gayantha *)
+"pasindu\0 gayantha"

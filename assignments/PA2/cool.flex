@@ -62,7 +62,6 @@ int str_buf_full;
 %x 							single_comment
 %x							multi_comment
 %x 							string
-%x 							hold_string_buffer
 
 
  /*
@@ -274,6 +273,11 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 	}
 
 	\0		{
+		cool_yylval.error_msg = "String contains null character";
+		return(ERROR);
+	}
+
+	\\0		{
 		*string_buf_ptr = '0';
 		string_buf_ptr++;
 		cool_yylval.error_msg = "String contains null character";
