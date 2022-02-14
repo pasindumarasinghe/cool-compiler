@@ -12,6 +12,8 @@
 #include <stringtab.h>
 #include <utilities.h>
 
+#include <string.h>
+
 /* The compiler assumes these identifiers. */
 #define yylval cool_yylval
 #define yylex  cool_yylex
@@ -76,6 +78,7 @@ BLANK_CHAR					[ \f\r\t\v]+
 
 CLASS 						(?i:class)
 ELSE 						(?i:else)
+FI 							(?i:fi)
 IF 							(?i:if)
 IN 							(?i:in)
 INHERITS 					(?i:inherits)
@@ -126,7 +129,8 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
  /*
  * The single-character operators
  */
-
+"."							{ return '.'; }
+","							{ return ','; }
 ";"							{ return ';'; }
 ":"							{ return ':'; }
 "("							{ return '('; }
@@ -172,7 +176,7 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 							}
 {BOOL_FALSE}				{ 
 								cool_yylval.boolean = false;
-							return BOOL_CONST; 
+								return BOOL_CONST; 
 							}
 
 
@@ -241,11 +245,25 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
  * String constants
  */
 
-{STR_BEGIN}		{ BEGIN(string); }
+{STR_BEGIN} 	{ 
+	memset(string_buf,0,MAX_STR_CONST);
+	string_buf_ptr = string_buf;
+	BEGIN(string); 
+}
 
 <string>{
-	{STR_END}	{ BEGIN(INITIAL); }
-	
+	{STR_END}	{ 
+		if(((string_buf_ptr-string_buf+1)) >= MAX_STR_CONST){
+			cool_yylval.error_msg = "String constant too long";
+			BEGIN(INITIAL);
+			return(ERROR);
+		} else{
+			cool_yylval.symbol = idtable.add_string(string_buf);
+			BEGIN(INITIAL);
+			return(STR_CONST);
+		}
+		 
+	}
 	
 	\n 		{
 		curr_lineno++;
@@ -255,20 +273,14 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 	}
 
 	\0		{
-		string_buf[str_length] = '0';
-		str_length++;
+		*string_buf_ptr = '0';
+		string_buf_ptr++;
 		cool_yylval.error_msg = "String contains null character";
 		return(ERROR);
 	}
 
-	\\n 	{
-
-		if(str_length+1 >= MAX_STR_CONST){
-			cool_yylval.error_msg = "String constant too long";
-			str_length = 0;
-			BEGIN(hold_string_buffer);
-			return(ERROR);
-		} else {
+	\\n 	{ 
+		if((string_buf_ptr-string_buf+1)-1 < MAX_STR_CONST){
 			string_buf[str_length] = '\n';
 			str_length++;
 			curr_lineno++; 
@@ -276,13 +288,7 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 
 	}
 	\\b 	{
-
-		if(str_length+1 >= MAX_STR_CONST){
-			cool_yylval.error_msg = "String constant too long";
-			str_length = 0;
-			BEGIN(hold_string_buffer);
-			return(ERROR);
-		} else {
+		if((string_buf_ptr-string_buf+1)-1 < MAX_STR_CONST) {
 			string_buf[str_length] = '\b';
 			str_length++;
 		}
@@ -291,12 +297,7 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 
 	\\t 	{
 
-		if(str_length+1 >= MAX_STR_CONST){
-			cool_yylval.error_msg = "String constant too long";
-			str_length = 0;
-			BEGIN(hold_string_buffer);
-			return(ERROR);
-		} else{
+		if((string_buf_ptr-string_buf+1)-1 < MAX_STR_CONST){
 			string_buf[str_length] = '\t';
 			str_length++;
 		}
@@ -309,6 +310,7 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 		return(ERROR);
 	}
 }
+
 
 
  /*

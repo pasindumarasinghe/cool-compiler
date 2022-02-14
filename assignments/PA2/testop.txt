@@ -37,9 +37,10 @@
 #17 OBJECTID out_string
 #17 '('
 #17 OBJECTID population_map
-#17 ERROR "."
+#17 '.'
 #17 OBJECTID concat
 #17 '('
+#18 STR_CONST "\n"
 #18 ')'
 #18 ')'
 #18 ';'
@@ -55,7 +56,7 @@
 #23 TYPEID Int
 #23 '{'
 #24 OBJECTID population_map
-#24 ERROR "."
+#24 '.'
 #24 OBJECTID length
 #24 '('
 #24 ')'
@@ -71,11 +72,11 @@
 #27 TYPEID String
 #27 '{'
 #28 OBJECTID population_map
-#28 ERROR "."
+#28 '.'
 #28 OBJECTID substr
 #28 '('
 #28 OBJECTID position
-#28 ERROR ","
+#28 ','
 #28 INT_CONST 1
 #28 ')'
 #29 '}'
@@ -161,7 +162,8 @@
 #50 OBJECTID position
 #50 ')'
 #50 '='
-X#50 THEN
+X#50 STR_CONST ""
+#50 THEN
 #50 INT_CONST 1
 #50 ELSE
 #50 INT_CONST 0
@@ -173,7 +175,8 @@ X#50 THEN
 #51 OBJECTID position
 #51 ')'
 #51 '='
-X#51 THEN
+X#51 STR_CONST ""
+#51 THEN
 #51 INT_CONST 1
 #51 ELSE
 #51 INT_CONST 0
@@ -185,7 +188,8 @@ X#51 THEN
 #52 OBJECTID position
 #52 ')'
 #52 '='
-X#52 THEN
+X#52 STR_CONST ""
+#52 THEN
 #52 INT_CONST 1
 #52 ELSE
 #52 INT_CONST 0
@@ -194,9 +198,10 @@ X#52 THEN
 #53 INT_CONST 1
 #53 ')'
 #54 THEN
-X#56 ELSE
+X#55 STR_CONST ""
+#56 ELSE
 #57 ERROR "'"
-#57 ERROR "."
+#57 '.'
 #57 ERROR "'"
 #58 OBJECTID fi
 #59 '}'
@@ -239,7 +244,7 @@ X#56 ELSE
 #68 OBJECTID temp
 #68 ASSIGN
 #68 OBJECTID temp
-#68 ERROR "."
+#68 '.'
 #68 OBJECTID concat
 #68 '('
 #68 OBJECTID cell_at_next_evolution
@@ -291,13 +296,14 @@ X#56 ELSE
 #84 NEW
 #84 TYPEID CellularAutomaton
 #84 ')'
-#84 ERROR "."
+#84 '.'
 #84 OBJECTID init
 #84 '('
-         X         #84 ')'
+         X         #84 STR_CONST ""
+#84 ')'
 #84 ';'
 #85 OBJECTID cells
-#85 ERROR "."
+#85 '.'
 #85 OBJECTID print
 #85 '('
 #85 ')'
@@ -317,13 +323,13 @@ X#56 ELSE
 #87 LOOP
 #88 '{'
 #89 OBJECTID cells
-#89 ERROR "."
+#89 '.'
 #89 OBJECTID evolve
 #89 '('
 #89 ')'
 #89 ';'
 #90 OBJECTID cells
-#90 ERROR "."
+#90 '.'
 #90 OBJECTID print
 #90 '('
 #90 ')'
