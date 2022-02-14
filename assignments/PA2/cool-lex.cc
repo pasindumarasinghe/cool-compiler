@@ -691,8 +691,8 @@ static yyconst flex_int16_t yy_rule_linenum[62] =
       161,  162,  163,  164,  165,  166,  167,  168,  169,  170,
       171,  172,  173,  174,  175,  176,  177,  181,  188,  189,
       208,  211,  212,  216,  219,  220,  231,  235,  242,  252,
-      259,  272,  278,  285,  292,  300,  315,  329,  338,  343,
-      355
+      259,  272,  278,  285,  294,  304,  321,  337,  346,  351,
+      363
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -753,7 +753,7 @@ extern YYSTYPE cool_yylval;
 
 
 int comment_depth;
-int str_length;
+int str_buf_full;
 
 
 /*
@@ -1461,7 +1461,7 @@ case 51:
 YY_RULE_SETUP
 #line 259 "cool.flex"
 { 
-		if((string_buf_ptr-string_buf) >= MAX_STR_CONST){
+		if(str_buf_full){
 			cool_yylval.error_msg = "String constant too long";
 			BEGIN(INITIAL);
 			return(ERROR);
@@ -1500,35 +1500,41 @@ YY_RULE_SETUP
 		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST){
 			*string_buf_ptr = '\n';
 			string_buf_ptr++;
+		} else{
+			str_buf_full = 1;
 		}
 
 	}
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 292 "cool.flex"
+#line 294 "cool.flex"
 {
 		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST) {
 			*string_buf_ptr = '\b';
 			string_buf_ptr++;
+		} else{
+			str_buf_full = 1;
 		}
 
 	}
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 300 "cool.flex"
+#line 304 "cool.flex"
 {
 
 		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST){
 			*string_buf_ptr = '\t';
 			string_buf_ptr++;
+		} else{
+			str_buf_full = 1;
 		}
 
 	}				
 	YY_BREAK
 case YY_STATE_EOF(string):
-#line 309 "cool.flex"
+#line 315 "cool.flex"
 {
 		cool_yylval.error_msg = "EOF in string constant";
 		BEGIN(INITIAL);
@@ -1537,11 +1543,13 @@ case YY_STATE_EOF(string):
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 315 "cool.flex"
+#line 321 "cool.flex"
 {
 		if((string_buf_ptr-string_buf)+yyleng < MAX_STR_CONST){
 			strcpy(string_buf_ptr, yytext);
 			string_buf_ptr += yyleng;
+		} else{
+			str_buf_full = 1;
 		}
 	}
 	YY_BREAK
@@ -1551,7 +1559,7 @@ YY_RULE_SETUP
  */
 case 58:
 YY_RULE_SETUP
-#line 329 "cool.flex"
+#line 337 "cool.flex"
 {
 								cool_yylval.symbol = inttable.add_string(yytext);
 								return(INT_CONST);
@@ -1562,7 +1570,7 @@ YY_RULE_SETUP
  */
 case 59:
 YY_RULE_SETUP
-#line 338 "cool.flex"
+#line 346 "cool.flex"
 {
 								cool_yylval.symbol = idtable.add_string(yytext);
 								return(TYPEID);
@@ -1570,7 +1578,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 343 "cool.flex"
+#line 351 "cool.flex"
 {
 								cool_yylval.symbol = idtable.add_string(yytext);
 								return(OBJECTID);
@@ -1581,7 +1589,7 @@ YY_RULE_SETUP
  */
 case 61:
 YY_RULE_SETUP
-#line 355 "cool.flex"
+#line 363 "cool.flex"
 {
 	cool_yylval.error_msg = yytext;
 	return(ERROR);
@@ -1589,10 +1597,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 360 "cool.flex"
+#line 368 "cool.flex"
 ECHO;
 	YY_BREAK
-#line 1596 "cool-lex.cc"
+#line 1604 "cool-lex.cc"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(single_comment):
 case YY_STATE_EOF(hold_string_buffer):
@@ -2741,7 +2749,7 @@ void yyfree (void * ptr )
 
 /* %ok-for-header */
 
-#line 360 "cool.flex"
+#line 368 "cool.flex"
 
 
 

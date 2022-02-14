@@ -48,7 +48,7 @@ extern YYSTYPE cool_yylval;
 
 
 int comment_depth;
-boolean str_buf_full;
+int str_buf_full;
 
 
 %}
@@ -257,7 +257,7 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 
 <string>{
 	{STR_END}	{ 
-		if((string_buf_ptr-string_buf) >= MAX_STR_CONST){
+		if(str_buf_full){
 			cool_yylval.error_msg = "String constant too long";
 			BEGIN(INITIAL);
 			return(ERROR);
@@ -286,6 +286,8 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST){
 			*string_buf_ptr = '\n';
 			string_buf_ptr++;
+		} else{
+			str_buf_full = 1;
 		}
 
 	}
@@ -293,6 +295,8 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST) {
 			*string_buf_ptr = '\b';
 			string_buf_ptr++;
+		} else{
+			str_buf_full = 1;
 		}
 
 	}
@@ -302,6 +306,8 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST){
 			*string_buf_ptr = '\t';
 			string_buf_ptr++;
+		} else{
+			str_buf_full = 1;
 		}
 
 	}				
@@ -316,6 +322,8 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 		if((string_buf_ptr-string_buf)+yyleng < MAX_STR_CONST){
 			strcpy(string_buf_ptr, yytext);
 			string_buf_ptr += yyleng;
+		} else{
+			str_buf_full = 1;
 		}
 	}
 }
