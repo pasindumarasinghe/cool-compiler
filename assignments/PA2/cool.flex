@@ -44,8 +44,11 @@ extern YYSTYPE cool_yylval;
  /*
  *  Add Your own definitions here
  */
+#define SINGLE_CHAR_LENGTH 1
+
+
 int comment_depth;
-int str_length;
+boolean str_buf_full;
 
 
 %}
@@ -157,6 +160,7 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 {CLASS} 					{ return (CLASS); }
 {ELSE}						{ return (ELSE); }
 {IF}						{ return (IF); }
+{FI}						{ return (FI); }
 {IN}						{ return (IN); }
 {INHERITS}					{ return (INHERITS); }
 {LET}						{ return (LET); }
@@ -253,12 +257,12 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 
 <string>{
 	{STR_END}	{ 
-		if(((string_buf_ptr-string_buf+1)) >= MAX_STR_CONST){
+		if((string_buf_ptr-string_buf) >= MAX_STR_CONST){
 			cool_yylval.error_msg = "String constant too long";
 			BEGIN(INITIAL);
 			return(ERROR);
 		} else{
-			cool_yylval.symbol = idtable.add_string(string_buf);
+			cool_yylval.symbol = stringtable.add_string(string_buf);
 			BEGIN(INITIAL);
 			return(STR_CONST);
 		}
@@ -268,7 +272,6 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 	\n 		{
 		curr_lineno++;
 		cool_yylval.error_msg = "Unterminated string constant";
-		BEGIN(INITIAL);
 		return(ERROR);
 	}
 
@@ -280,26 +283,25 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 	}
 
 	\\n 	{ 
-		if((string_buf_ptr-string_buf+1)-1 < MAX_STR_CONST){
-			string_buf[str_length] = '\n';
-			str_length++;
-			curr_lineno++; 
+		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST){
+			*string_buf_ptr = '\n';
+			string_buf_ptr++;
 		}
 
 	}
 	\\b 	{
-		if((string_buf_ptr-string_buf+1)-1 < MAX_STR_CONST) {
-			string_buf[str_length] = '\b';
-			str_length++;
+		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST) {
+			*string_buf_ptr = '\b';
+			string_buf_ptr++;
 		}
 
 	}
 
 	\\t 	{
 
-		if((string_buf_ptr-string_buf+1)-1 < MAX_STR_CONST){
-			string_buf[str_length] = '\t';
-			str_length++;
+		if((string_buf_ptr-string_buf)+SINGLE_CHAR_LENGTH < MAX_STR_CONST){
+			*string_buf_ptr = '\t';
+			string_buf_ptr++;
 		}
 
 	}				
@@ -308,6 +310,13 @@ OBJECTID 					[a-z][a-zA-Z0-9_]*
 		cool_yylval.error_msg = "EOF in string constant";
 		BEGIN(INITIAL);
 		return(ERROR);
+	}
+
+	. 		{
+		if((string_buf_ptr-string_buf)+yyleng < MAX_STR_CONST){
+			strcpy(string_buf_ptr, yytext);
+			string_buf_ptr += yyleng;
+		}
 	}
 }
 
