@@ -3,6 +3,13 @@
 *              Parser definition for the COOL language.
 *
 */
+
+/*
+
+@author E/17/207 - Marasinghe MAPG
+
+*/
+
 %{
   #include <iostream>
   #include "cool-tree.h"
@@ -129,44 +136,92 @@
     value of each non terminal. (See section 3.6 in the bison 
     documentation for details). */
     
-    /* Declare types for the grammar's non-terminals. */
+    /* Declare types for the grammar's non-terminals. <cool-tree.aps> */ 
     %type <program> program
     %type <classes> class_list
     %type <class_> class
+
+    %type <features> feature_list
+    %type <feature> feature
     
-    /* You will want to change the following line. */
-    %type <features> dummy_feature_list
+    %type <formals> formal_list
+    %type <formal> formal
+
+    %type <expressions> expressions_list
+    %type <expression> expression
+    
+	%type <cases> case_list
+    %type <case> case
+
+
     
     /* Precedence declarations go here. */
-    
+	    /* COOL manual page 17 , bison manual page 81
+			* All binary operations are left-associative(except "assignment(<-)" which is right associative)
+			* Three comparison operators are non associative (<= , < , =)
+	    */
+
+	%left 	"."
+	%left 	"@"
+	%left 	"~"
+	%nonassoc 	ISVOID
+	%left 	"*" "/"
+	%left 	"+" "-"
+	%nonassoc 	LE "<" "="
+	%nonassoc 	NOT
+	%right 		"<-"	
+
+
     
     %%
+	/*
+	===============
+		Grammar
+	===============
+	COOL Manual - Page 16
+	*/
+
     /* 
     Save the root of the abstract syntax tree in a global variable.
     */
-    program	: class_list	{ @$ = @1; ast_root = program($1); }
+    program	: 
+    	class_list	
+    		{ 
+    			@$ = @1; 
+    			ast_root = program($1); 
+    		}
     ;
     
     class_list
-    : class			/* single class */
-    { $$ = single_Classes($1);
-    parse_results = $$; }
-    | class_list class	/* several classes */
-    { $$ = append_Classes($1,single_Classes($2)); 
-    parse_results = $$; }
-    ;
+    	: class/* single class */
+    		{ 
+    			$$ = single_Classes($1);
+    			parse_results = $$; 
+    		}	
+    	| class_list class	/* several classes */
+	    	{ 	$$ = append_Classes($1,single_Classes($2)); 
+	    		parse_results = $$; 
+	    	}
+	;
     
+
     /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' dummy_feature_list '}' ';'
-    { $$ = class_($2,idtable.add_string("Object"),$4,
-    stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';'
-    { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+    class
+    	: CLASS TYPEID '{' feature_list '}' ';' 
+    		{ 
+    			$$ = class_($2,idtable.add_string("Object"),$4,stringtable.add_string(curr_filename)); 
+    		}
+    	| CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
+    		{ 
+    			$$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); 
+    		}
     ;
     
     /* Feature list may be empty, but no empty features in list. */
     dummy_feature_list:		/* empty */
-    {  $$ = nil_Features(); }
+    	{  
+    		$$ = nil_Features();
+    	}
     
     
     /* end of grammar */

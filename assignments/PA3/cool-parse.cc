@@ -71,7 +71,7 @@
 #define yylloc          cool_yylloc
 
 /* Copy the first part of user declarations.  */
-#line 6 "cool.y" /* yacc.c:339  */
+#line 13 "cool.y" /* yacc.c:339  */
 
   #include <iostream>
   #include "cool-tree.h"
@@ -250,7 +250,7 @@ extern int cool_yydebug;
 
 union YYSTYPE
 {
-#line 89 "cool.y" /* yacc.c:355  */
+#line 96 "cool.y" /* yacc.c:355  */
 
       Boolean boolean;
       Symbol symbol;
@@ -601,7 +601,7 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,   147,   147,   151,   154,   160,   163,   169
+       0,   154,   154,   158,   161,   167,   170,   176
 };
 #endif
 
@@ -1473,40 +1473,40 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 147 "cool.y" /* yacc.c:1646  */
+#line 154 "cool.y" /* yacc.c:1646  */
     { (yyloc) = (yylsp[0]); ast_root = program((yyvsp[0].classes)); }
 #line 1479 "cool.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 152 "cool.y" /* yacc.c:1646  */
+#line 159 "cool.y" /* yacc.c:1646  */
     { (yyval.classes) = single_Classes((yyvsp[0].class_));
     parse_results = (yyval.classes); }
 #line 1486 "cool.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 155 "cool.y" /* yacc.c:1646  */
+#line 162 "cool.y" /* yacc.c:1646  */
     { (yyval.classes) = append_Classes((yyvsp[-1].classes),single_Classes((yyvsp[0].class_))); 
     parse_results = (yyval.classes); }
 #line 1493 "cool.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 161 "cool.y" /* yacc.c:1646  */
+#line 168 "cool.y" /* yacc.c:1646  */
     { (yyval.class_) = class_((yyvsp[-4].symbol),idtable.add_string("Object"),(yyvsp[-2].features),
     stringtable.add_string(curr_filename)); }
 #line 1500 "cool.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 164 "cool.y" /* yacc.c:1646  */
+#line 171 "cool.y" /* yacc.c:1646  */
     { (yyval.class_) = class_((yyvsp[-6].symbol),(yyvsp[-4].symbol),(yyvsp[-2].features),stringtable.add_string(curr_filename)); }
 #line 1506 "cool.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 169 "cool.y" /* yacc.c:1646  */
+#line 176 "cool.y" /* yacc.c:1646  */
     {  (yyval.features) = nil_Features(); }
 #line 1512 "cool.tab.c" /* yacc.c:1646  */
     break;
@@ -1747,7 +1747,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 173 "cool.y" /* yacc.c:1906  */
+#line 180 "cool.y" /* yacc.c:1906  */
 
     
     /* This function is called automatically when Bison detects a parse error. */
