@@ -161,15 +161,15 @@
 			* Three comparison operators are non associative (<= , < , =)
 	    */
 
-	%left 	"."
-	%left 	"@"
-	%left 	"~"
+	%left 	'.'
+	%left 	'@'
+	%left 	'~'
 	%nonassoc 	ISVOID
-	%left 	"*" "/"
-	%left 	"+" "-"
-	%nonassoc 	LE "<" "="
+	%left 	'*' '/'
+	%left 	'+' '-'
+	%nonassoc 	LE '<' '='
 	%nonassoc 	NOT
-	%right 		"<-"	
+	%right 		ASSIGN	
 
 
     
@@ -218,11 +218,55 @@
     ;
     
     /* Feature list may be empty, but no empty features in list. */
-    dummy_feature_list:		/* empty */
-    	{  
-    		$$ = nil_Features();
-    	}
+    feature_list
+    	:		/* empty */
+	    	{  
+	    		$$ = nil_Features();
+	    	}
+    	| feature_list feature 	/* No empty features in a list */
+    		{
+    			$$ = append_Features($1, single_Features($2));
+    		}
+    ;
     
+    feature
+    	: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' ';' 	/* declaration of a method */
+    		{
+    			$$ = method($1, $3, $6, $8);
+    		}
+    	/* declarations of attributes */
+    	| OBJECTID ':' TYPEID ';'
+    		{
+    			$$ = attr($1, $3, no_expr());
+    		}
+    	| OBJECTID ':' TYPEID ASSIGN expression
+    		{
+    			$$ = attr($1, $3, $5);
+    		}
+    	;
+
+    formal_list
+    	: /* a formal list can be empty */
+    		{
+    			nil_Formals();
+    		}
+    	| formal_list formal
+    		{
+    			$$ = append_Formals($1, single_Formals($2));
+    		}
+
+    formal
+    	: OBJECTID ':' TYPE
+    		{
+    			$$ = formal($1, $3);
+    		}
+
+    expression
+    	: OBJECTID ASSIGN expression
+    		{
+    			$$ = assign($1, $3);
+    		}
+    	| 
     
     /* end of grammar */
     %%
