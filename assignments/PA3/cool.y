@@ -151,6 +151,8 @@
     %type <expressions> expression_list_comma_seperated
     %type <expression> expression
     
+    %type <expression> let_expression
+
 	%type <cases> case_list
     %type <case> case
 
@@ -321,15 +323,15 @@
     		}
     	|	'{' expression_list '}'
     		{
-
+          $$ = block($2);
     		}
-    	|	/* let */
+    	|	/* let TODO*/
     		{
 
     		}
-    	|	/* case */
+    	|	CASE expression OF case_list ESAC 
     		{
-
+                typcase($2, $4);
     		}
     	| NEW TYPEID
     		{
@@ -396,6 +398,37 @@
 	   			$$ = bool_const($1);
 	   		}
 	;
+
+
+    let_expression
+        : OBJECTID ':' TYPEID IN expression     /* without initialization */
+            {
+                $$ = let($1, $3, no_expr(), $5);               
+            }
+        | OBJECTID ':' TYPEID ASSIGN expression IN expression /* with initialization */
+            {
+                $$ = let($1, $3, $5, $7);
+            }
+        | OBJECTID ':' TYPEID ',' let_expression IN expression /* comma seperated objects() */
+            {
+    
+            }
+
+    case_list
+        : case
+            {
+                $$ = single_Cases($1);
+            }
+        | case_list case
+            {
+                $$ = append_Cases($1, single_Cases($2));
+            }
+
+    case
+        : OBJECTID ':' TYPEID DARROW expression
+            {
+                branch($1, $3, $5);
+            }
     /* end of grammar */
     %%
     
