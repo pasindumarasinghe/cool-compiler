@@ -144,10 +144,11 @@
     %type <features> feature_list
     %type <feature> feature
     
-    %type <formals> formal_list
+    %type <formals> formal_list_comma_seperated
     %type <formal> formal
 
-    %type <expressions> expressions_list
+    %type <expressions> expression_list
+    %type <expressions> expression_list_comma_seperated
     %type <expression> expression
     
 	%type <cases> case_list
@@ -243,31 +244,158 @@
     		{
     			$$ = attr($1, $3, $5);
     		}
-    	;
+    ;
 
-    formal_list
+    formal_list_comma_seperated
     	: /* a formal list can be empty */
     		{
     			nil_Formals();
     		}
-    	| formal_list formal
+    	| formal /* single formal */
+    		{
+    			$$ = single_Formals($1);
+    		}
+    	| formal_list_comma_seperated ',' formals /* several formals */
     		{
     			$$ = append_Formals($1, single_Formals($2));
     		}
+    ;
+
 
     formal
     	: OBJECTID ':' TYPE
     		{
     			$$ = formal($1, $3);
     		}
+    ;
+
+    expression_list_comma_seperated
+    	: /* empty */
+    		{
+    			$$ = nil_Expressions();
+    		}
+    	| expression /* single expression */
+    		{
+    			$$ = single_Expressions($1);
+    		}
+    	| expression_list_comma_seperated ',' expression /* several comma seperated expressions */
+    		{
+    			$$ = append_Expressions($1, single_Expressions($2));
+    		}
+    ;
+
+    expression_list
+    	: expression /* single expression */
+    		{
+    			$$ = single_Expressions($1);
+    		}
+    	| expression_list expression /* several expressions */
+    		{
+    			$$ = append_Expressions($1, single_Expressions($2));
+    		}
+    ;
 
     expression
     	: OBJECTID ASSIGN expression
     		{
     			$$ = assign($1, $3);
     		}
-    	| 
-    
+    	| expression '.' OBJECTID '(' expression_list_comma_seperated ')'
+    		{
+    			$$ = dispatch($1, $3, $5);
+    		}
+    	| expression '@' TYPEID '.' OBJECTID '(' expression_list_comma_seperated ')'
+    		{
+    			$$ = static_dispatch($1, $3, $5, $7);
+    		}
+    	| OBJECTID '(' expression_list_comma_seperated ')'
+    		{
+    		}
+    	| IF expression THEN expression ELSE expression FI
+    		{
+    			$$ = cond($2, $4, $6);
+    		}
+    	| WHILE expression LOOP expression POOL
+    		{
+    			$$ = loop($2, $4);
+    		}
+    	|	'{' expression_list '}'
+    		{
+
+    		}
+    	|	/* let */
+    		{
+
+    		}
+    	|	/* case */
+    		{
+
+    		}
+    	| NEW TYPEID
+    		{
+    			$$ = new_($2);
+    		}
+    	| ISVOID expression
+    		{
+    			$$ = isvoid($2);
+    		}
+    	| expression '+' expression
+    		{
+    			$$ = plus($1, $3);
+    		}
+    	| expression '-' expression
+    		{
+    			$$ = sub($1, $3);
+    		}
+    	| expression '*' expression
+    		{
+    			$$ = mul($1, $3);
+    		}
+    	| expression '/' expression
+    		{
+    			$$ = divide($1, $3);
+    		}
+    	| '~' expression
+    		{
+    			$$ = neg($2);
+    		}
+    	| expression '<' expression
+    		{
+    			$$ = lt($1, $3);
+    		}
+    	| expression LE expression
+    		{
+    			$$ = leq($1, $3);
+    		}
+    	| expression = expression
+    		{
+    			$$ = eq($1, $3);
+    		}
+    	| NOT expression
+    		{
+    			$$ = comp($2);
+    		}
+    	| '(' expression ')'
+    		{
+
+    		}
+    	| OBJECTID
+    		{
+    			$$ = object($1);
+    		}
+	   	| INT_CONST
+	   		{
+	   			$$ = int_const($1);
+	   		}
+	   	| STR_CONST
+	   		{
+	   			$$ = string_const($1);
+	   		}
+	   	| BOOL_CONST
+	   		{
+	   			$$ = bool_const($1);
+	   		}
+	;
     /* end of grammar */
     %%
     
