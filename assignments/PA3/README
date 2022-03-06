@@ -130,3 +130,17 @@ Instructions
 
 Write-up for PA3
 ----------------
+
+
+let let_expression in expression
+let let_expression in (expression '+' expression)
+
+
+================
+ error handling - https://www.gnu.org/software/bison/manual/html_node/Error-Recovery.html
+================
+the strategy = (skip the rest of the current input line or current statement if an error is detected)
+
+* When an error is found in a "Class", the parser skips parsing until ';'
+* When an error is found in a feature, the parser skips parsing until ';'
+* When an error is found in a formal, the parser skips parsing until ')'

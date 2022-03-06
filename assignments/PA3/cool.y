@@ -216,6 +216,10 @@
     		{ 
     			$$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); 
     		}
+    	| error ';' 
+    		{
+
+    		}
     ;
     
     /* Feature list may be empty, but no empty features in list. */
@@ -240,16 +244,20 @@
     		{
     			$$ = attr($1, $3, no_expr());
     		}
-    	| OBJECTID ':' TYPEID ASSIGN expression
+    	| OBJECTID ':' TYPEID ASSIGN expression ';'
     		{
     			$$ = attr($1, $3, $5);
+    		}
+    	| error ';'
+    		{
+
     		}
     ;
 
     formal_list_comma_seperated
     	: /* a formal list can be empty */
     		{
-    			nil_Formals();
+    			$$ = nil_Formals();
     		}
     	| formal /* single formal */
     		{
@@ -266,6 +274,10 @@
     	: OBJECTID ':' TYPEID
     		{
     			$$ = formal($1, $3);
+    		}
+    	| error ')'
+    		{
+    			
     		}
     ;
 
@@ -285,11 +297,11 @@
     ;
 
     expression_list
-    	: expression /* single expression */
+    	: expression ';' /* single expression */
     		{
     			$$ = single_Expressions($1);
     		}
-    	| expression_list expression /* several expressions */
+    	| expression_list expression ';' /* several expressions */
     		{
     			$$ = append_Expressions($1, single_Expressions($2));
     		}
@@ -310,6 +322,7 @@
     		}
     	| OBJECTID '(' expression_list_comma_seperated ')'
     		{
+    			$$ = dispatch(object(idtable.add_string("self")), $1, $3);
     		}
     	| IF expression THEN expression ELSE expression FI
     		{
@@ -329,7 +342,7 @@
     		}
     	| CASE expression OF case_list ESAC 
     		{
-                typcase($2, $4);
+                $$ = typcase($2, $4);
     		}
     	| NEW TYPEID
     		{
@@ -399,10 +412,11 @@
 
 
     let_expression
-        : OBJECTID ':' TYPEID let_assignment IN expression
+    	: OBJECTID ':' TYPEID let_assignment IN expression
             {
                 $$ = let($1, $3, $4, $6);               
             }
+
         | OBJECTID ':' TYPEID let_assignment ',' let_expression
             {
                 $$ = let($1, $3, $4, $6);
@@ -421,11 +435,11 @@
     ;
 
     case_list
-        : case
+        : case ';'
             {
                 $$ = single_Cases($1);
             }
-        | case_list case
+        | case_list case ';'
             {
                 $$ = append_Cases($1, single_Cases($2));
             }
