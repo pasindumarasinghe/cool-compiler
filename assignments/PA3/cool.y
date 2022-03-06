@@ -150,11 +150,11 @@
     %type <expressions> expression_list
     %type <expressions> expression_list_comma_seperated
     %type <expression> expression
-    
     %type <expression> let_expression
+    %type <expression> let_assignment
 
 	%type <cases> case_list
-    %type <case> case
+    %type <case_> case
 
 
     
@@ -164,17 +164,15 @@
 			* Three comparison operators are non associative (<= , < , =)
 	    */
 
-	%left 	'.'
-	%left 	'@'
-	%left 	'~'
-	%nonassoc 	ISVOID
-	%left 	'*' '/'
-	%left 	'+' '-'
-	%nonassoc 	LE '<' '='
+	%right 		ASSIGN
 	%nonassoc 	NOT
-	%right 		ASSIGN	
-
-
+	%nonassoc 	LE '<' '='
+	%left 	'+' '-'
+	%left 	'*' '/'
+	%nonassoc 	ISVOID
+	%left 	'~'
+	%left 	'@'
+	%left 	'.'
     
     %%
 	/*
@@ -233,7 +231,7 @@
     ;
     
     feature
-    	: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' ';' 	/* declaration of a method */
+    	: OBJECTID '(' formal_list_comma_seperated ')' ':' TYPEID '{' expression '}' ';' 	/* declaration of a method */
     		{
     			$$ = method($1, $3, $6, $8);
     		}
@@ -257,15 +255,15 @@
     		{
     			$$ = single_Formals($1);
     		}
-    	| formal_list_comma_seperated ',' formals /* several formals */
+    	| formal_list_comma_seperated ',' formal /* several formals */
     		{
-    			$$ = append_Formals($1, single_Formals($2));
+    			$$ = append_Formals($1, single_Formals($3));
     		}
     ;
 
 
     formal
-    	: OBJECTID ':' TYPE
+    	: OBJECTID ':' TYPEID
     		{
     			$$ = formal($1, $3);
     		}
@@ -282,7 +280,7 @@
     		}
     	| expression_list_comma_seperated ',' expression /* several comma seperated expressions */
     		{
-    			$$ = append_Expressions($1, single_Expressions($2));
+    			$$ = append_Expressions($1, single_Expressions($3));
     		}
     ;
 
@@ -321,15 +319,15 @@
     		{
     			$$ = loop($2, $4);
     		}
-    	|	'{' expression_list '}'
+    	| '{' expression_list '}'
     		{
-          $$ = block($2);
+          		$$ = block($2);
     		}
-    	|	/* let TODO*/
+    	| LET let_expression
     		{
-
+    			$$ = $2;
     		}
-    	|	CASE expression OF case_list ESAC 
+    	| CASE expression OF case_list ESAC 
     		{
                 typcase($2, $4);
     		}
@@ -369,7 +367,7 @@
     		{
     			$$ = leq($1, $3);
     		}
-    	| expression = expression
+    	| expression '=' expression
     		{
     			$$ = eq($1, $3);
     		}
@@ -379,7 +377,7 @@
     		}
     	| '(' expression ')'
     		{
-
+    			$$ = $2;
     		}
     	| OBJECTID
     		{
@@ -401,18 +399,26 @@
 
 
     let_expression
-        : OBJECTID ':' TYPEID IN expression     /* without initialization */
+        : OBJECTID ':' TYPEID let_assignment IN expression
             {
-                $$ = let($1, $3, no_expr(), $5);               
+                $$ = let($1, $3, $4, $6);               
             }
-        | OBJECTID ':' TYPEID ASSIGN expression IN expression /* with initialization */
+        | OBJECTID ':' TYPEID let_assignment ',' let_expression
             {
-                $$ = let($1, $3, $5, $7);
+                $$ = let($1, $3, $4, $6);
             }
-        | OBJECTID ':' TYPEID ',' let_expression IN expression /* comma seperated objects() */
-            {
-    
-            }
+    ;
+
+    let_assignment
+    	: /* empty */
+    		{
+    			$$ = no_expr();
+    		}
+    	| ASSIGN expression
+    		{
+    			$$ = $2;
+    		}
+    ;
 
     case_list
         : case
@@ -423,12 +429,14 @@
             {
                 $$ = append_Cases($1, single_Cases($2));
             }
+    ;
 
     case
         : OBJECTID ':' TYPEID DARROW expression
             {
-                branch($1, $3, $5);
+                $$ = branch($1, $3, $5);
             }
+    ;
     /* end of grammar */
     %%
     
