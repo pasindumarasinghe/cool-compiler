@@ -5,9 +5,11 @@
 */
 
 /*
-
-@author E/17/207 - Marasinghe MAPG
-
+=======
+Group 7
+=======
+E/17/134 - Jayasooriya JAKD
+E/17/207 - Marasinghe MAPG
 */
 
 %{
@@ -152,6 +154,9 @@
     %type <expression> expression
     %type <expression> let_expression
     %type <expression> let_assignment
+
+    %type <expression> single_let_construct
+    %type <expression> multiple_let_constructs
 
 	%type <cases> case_list
     %type <case_> case
@@ -417,16 +422,37 @@
 
 
     let_expression
+    	: single_let_construct
+            {
+                $$ = $1;               
+            }
+
+        | multiple_let_constructs
+            {
+                $$ = $1;
+            }
+    ;
+
+    single_let_construct
     	: OBJECTID ':' TYPEID let_assignment IN expression
             {
                 $$ = let($1, $3, $4, $6);               
             }
+        | error IN
+        	{
 
-        | OBJECTID ':' TYPEID let_assignment ',' let_expression
+        	}
+
+    multiple_let_constructs
+    	: OBJECTID ':' TYPEID let_assignment ',' let_expression
             {
                 $$ = let($1, $3, $4, $6);
             }
-    ;
+        | error ','
+        	{
+
+        	}
+
 
     let_assignment
     	: /* empty */

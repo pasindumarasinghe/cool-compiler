@@ -131,6 +131,10 @@ Instructions
 Write-up for PA3
 ----------------
 
+* Line numbers are not handled since bison has default rules for deciding which line number to use.
+* Note that "expression_list" and "expression_list_comma_seperated" are two different things and "expression_list" refers to block expressions ({[expr]+}) whereas "expression_list_comma_seperated" refers to comma seperated expressions (expr[[,expr]]*). 
+
+
 ============================
 Ambiguity in "let" construct
 ============================
@@ -152,3 +156,11 @@ the strategy = (skip the rest of the current input line or current statement if 
 * When an error is found in a feature, the parser skips parsing until ';'
 * When an error is found in a formal, the parser skips parsing until ')'
 * When an error is found in an expression inside a {..} block, the parser skips parsing until ';'
+
+* error recovery in let statements - 
+	let statements are considered to be of two types
+		1. A let statement with only one variable.
+		2. A let statement with multiple variables.
+
+	In (1) where there is only one variable, if there is an error in the let binding, the parser skips parsing until the 'IN' (end of the construct).
+	In (2) where there are multiple variables, if there is an error in a let binding, the parser skips parsing until the ',' (the start of the next variable)
