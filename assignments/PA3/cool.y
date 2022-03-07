@@ -442,6 +442,7 @@ E/17/207 - Marasinghe MAPG
         	{
 
         	}
+    ;
 
     multiple_let_constructs
     	: OBJECTID ':' TYPEID let_assignment ',' let_expression
@@ -453,6 +454,7 @@ E/17/207 - Marasinghe MAPG
 
         	}
 
+    ;
 
     let_assignment
     	: /* empty */
