@@ -164,6 +164,7 @@
 			* Three comparison operators are non associative (<= , < , =)
 	    */
 
+	%precedence IN
 	%right 		ASSIGN
 	%nonassoc 	NOT
 	%nonassoc 	LE '<' '='
@@ -296,7 +297,7 @@
     		}
     ;
 
-    expression_list
+    expression_list /* {[expr;]+}  */
     	: expression ';' /* single expression */
     		{
     			$$ = single_Expressions($1);
@@ -304,6 +305,10 @@
     	| expression_list expression ';' /* several expressions */
     		{
     			$$ = append_Expressions($1, single_Expressions($2));
+    		}
+    	| error ';'
+    		{
+
     		}
     ;
 

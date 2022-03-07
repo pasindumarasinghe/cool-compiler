@@ -131,16 +131,24 @@ Instructions
 Write-up for PA3
 ----------------
 
+============================
+Ambiguity in "let" construct
+============================
 
-let let_expression in expression
-let let_expression in (expression '+' expression)
+* In a situation similar to what is below, the parser can't decide whether to reduce or to shift.(S/R conflict)
+
+let let_expression in expression .
+let let_expression in (expression . '+' expression)
+
+* Solved by introducing a lower precedence to 'in' than other operators. - https://www.gnu.org/software/bison/manual/html_node/Non-Operators.html
 
 
-================
- error handling - https://www.gnu.org/software/bison/manual/html_node/Error-Recovery.html
-================
+=======================
+error handling/recovery - https://www.gnu.org/software/bison/manual/html_node/Error-Recovery.html
+=======================
 the strategy = (skip the rest of the current input line or current statement if an error is detected)
 
 * When an error is found in a "Class", the parser skips parsing until ';'
 * When an error is found in a feature, the parser skips parsing until ';'
 * When an error is found in a formal, the parser skips parsing until ')'
+* When an error is found in an expression inside a {..} block, the parser skips parsing until ';'
