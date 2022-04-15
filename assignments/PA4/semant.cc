@@ -308,6 +308,36 @@ Symbol ClassTable::type_check_let(let_class *let, class__class *current_class)
     return let_type;
 }
 
+Symbol ClassTable::type_check_static_dispatch(static_dispatch_class *static_dispatch, class__class *current_class)
+{
+    /* handle the static portion */
+    Symbol dispatch_type = static_dispatch->get_type();
+    class_class *type_class = static_cast<class_class *>(classes_table.lookup(dispatch_type));
+
+    /* When the type of the class is NULL*/
+    if (type_class == NULL)
+    {
+        LOG_ERROR(current_class) << "Null Type in static dispatch" << dispatch_type << endl;
+        return Object;
+    }
+
+    /* dispatch portion */
+    Symbol object_type = type_check_expression(static_dispatch->get_object(), current_class, dispatch_type);
+
+    Symbol return_type = handle_dispatch(
+        static_dispatch->get_object(),
+        static_dispatch->get_name(),
+        static_dispatch->get_arguments(),
+        dispatch_type,
+        current_class);
+
+    if (return_type == SELF_TYPE)
+    {
+        return_type = object_type;
+    }
+    return return_type;
+}
+
 Symbol ClassTable::type_check_dispatch(dispatch_class *dispatch, class__class *current_class)
 {
     Symbol object_type = type_check_expression(dispatch->get_object(), current_class, Object);
@@ -324,6 +354,71 @@ Symbol ClassTable::type_check_dispatch(dispatch_class *dispatch, class__class *c
         return_type = object_type;
     }
     return return_type;
+}
+
+Symbol type_check_cond(cond_class *cond, class__class *current_class)
+{
+    /*check the type of the predicate of the if(<condition>)*/
+    type_check_expression(cond->get_predicate(), current_class, Bool);
+    Symbol then_type = type_check_expression(cond->get_then_expression(), current_class, Object);
+    Symbol_else_type = type_check_expression(cond->get_else_expression(), current_class, Object);
+    return type_union(then_type, else_type, current_class);
+}
+
+Symbol type_check_typcase(typcase_class *typcase, class__class *current_class) /*case expr of [[ID : TYPE => expr; ]]+ esac*/
+{
+    /* check the type of the case expression*/
+    type_check_expression(typcase->get_expression(), current_class, Object);
+
+    Cases cases = typcase->get_cases();
+    int no_of_cases = cases->len()
+                          std::vector<Symbol>
+                              types_of_branches;
+    Symbol return_type = nullptr;
+
+    for (int i; i < no_of_cases; i++)
+    {
+        branch_class *branch = static_cast<branch_class *>(cases->nth(i));
+        Symbol branch_id = branch->get_name();
+        Symbol branch_type = branch->get_type();
+
+        class__class *branch_type_ptr = static_cast<class__class *>(classes_table.lookup(branch_type));
+
+        if (branch_type_ptr == NULL)
+        {
+            LOG_ERROR(current_class)
+                << "Undefined type in case branch " << branch_type << endl;
+            continue;
+        }
+    }
+}
+
+Symbol type_check_block(block_class *block, class__class *current_class)
+{
+}
+
+Symbol type_check_object(object_class *object, class__class *current_class)
+{
+}
+
+Symbol type_check_let(let_class *let, class__class *current_class)
+{
+}
+
+Symbol type_check_new_(new__class *new_, class__class *current_class)
+{
+}
+
+void type_check_loop(loop_class *loop, class__class *current_class)
+{
+}
+
+void decl_attr(attr_class *current_attr, class__class *current_class)
+{
+}
+
+void decl_method(method_class *current_method, class__class *current_class)
+{
 }
 
 void ClassTable::type_check_eq(eq_class *eq, class__class *current_class)
@@ -359,6 +454,14 @@ bool ClassTable::is_descendant(Symbol desc, Symbol ancestor, class__class *curre
         current_type = parent_type;
     }
     return false;
+}
+
+Symbol handle_dispatch(Expression expr, Symbol name, Expressions arguments, Symbol dispatch_type, class__class *current_class)
+{
+}
+
+Symbol type_union(Symbol t1, Symbol t2, class__class *current_class)
+{
 }
 
 void ClassTable::install_basic_classes()
