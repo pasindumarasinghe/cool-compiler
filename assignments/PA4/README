@@ -164,3 +164,15 @@ Instructions
 
 Write-up for PA4
 ----------------
+
+Type Checking of Expressions
+
+* typcase
+	- Check the type of the case expression
+	- Check types of each case branch(recover when undefined type found in a case branch)
+
+* loop
+	- Type check both the predicate abd the body of the loop expression
+
+* block
+	- Type of the block expression is the type of the last block

@@ -356,7 +356,7 @@ Symbol ClassTable::type_check_dispatch(dispatch_class *dispatch, class__class *c
     return return_type;
 }
 
-Symbol type_check_cond(cond_class *cond, class__class *current_class)
+Symbol ClassTable::type_check_cond(cond_class *cond, class__class *current_class)
 {
     /*check the type of the predicate of the if(<condition>)*/
     type_check_expression(cond->get_predicate(), current_class, Bool);
@@ -365,7 +365,7 @@ Symbol type_check_cond(cond_class *cond, class__class *current_class)
     return type_union(then_type, else_type, current_class);
 }
 
-Symbol type_check_typcase(typcase_class *typcase, class__class *current_class) /*case expr of [[ID : TYPE => expr; ]]+ esac*/
+Symbol ClassTable::type_check_typcase(typcase_class *typcase, class__class *current_class) /*case expr of [[ID : TYPE => expr; ]]+ esac*/
 {
     /* check the type of the case expression*/
     type_check_expression(typcase->get_expression(), current_class, Object);
@@ -390,35 +390,167 @@ Symbol type_check_typcase(typcase_class *typcase, class__class *current_class) /
                 << "Undefined type in case branch " << branch_type << endl;
             continue;
         }
+
+        // TODO
     }
 }
 
-Symbol type_check_block(block_class *block, class__class *current_class)
-{
+Symbol ClassTable::type_check_block(block_class *block, class__class *current_class)
+{ /*type of a block expression is the type of the last block*/
+    Symbol final_block_type;
+    Expression block_body = block->get_body();
+    int no_of_blocks = block_body->len();
+
+    fot(int i = 0; i < no_of_blocks; i++)
+    {
+        final_block_type = type_check_expression(block_body->nth(i), current_class, Object);
+    }
+
+    return final_block_type;
 }
 
-Symbol type_check_object(object_class *object, class__class *current_class)
+Symbol ClassTable::type_check_object(object_class *object, class__class *current_class)
 {
+    Symbol object_name = object->get_name();
+    /* handle self object */
+    if (object_name == self)
+    {
+        return SELF_TYPE;
+    }
+
+    Symbol object_type = symbol_table.lookup(object_name);
+
+    /* type check the object */
+    if (object_type == NULL)
+    {
+        LOG_ERROR(current_class) << "Object Type Undefined" << object_name << endl;
+        object_type = Object;
+    }
+
+    return object_type;
 }
 
-Symbol type_check_let(let_class *let, class__class *current_class)
+Symbol ClassTable::type_check_let(let_class *let, class__class *current_class)
 {
+    symbol_table.enterscope();
+    Symbol let_type = let->get_type();
+    class__class *let_type_ptr = static_cast<class__class *>(classes_table.lookup(let_type));
+
+    /* check for entry of the type in the classes table(except for SELF_TYPE)*/
+    if (let_type_ptr == NULL && let_type != SELF_TYPE)
+    {
+        LOG_ERROR(current_class) << "Undefined type in let binding " << type << endl;
+        return Object;
+    }
+
+    Symbol let_id = let->get_identifier();
+
+    if (identifier == self)
+    {
+        LOG_ERROR(current_class) << "Trying to bind self in let binding" << endl;
+        return Object;
+    }
+
+    symbol_table.addid(let_id, let_type);
+    Expression let_init = let->get_init();
+    Expression let_body = let->get_body();
+    type_check_expression(let_init, current_class, let_type);
+    Symbol final_type = type_check_expression(let_body, current_class, Object);
+    symbol_table.exitscope();
+    return final_type;
 }
 
-Symbol type_check_new_(new__class *new_, class__class *current_class)
+Symbol ClassTable::type_check_new_(new__class *new_, class__class *current_class)
 {
+    Symbol new_type = new_->get_type();
+
+    if (new_type == SELF_TYPE)
+        return SELF_TYPE;
+
+    class__class new_type_ptr = static_cast<class__class *>(classes_table.lookup(new_type));
+
+    if (new_type_ptr == NULL)
+    {
+        LOG_ERROR(current_class) << "Undefined type in new expression " << type << endl;
+        return Object;
+    }
+
+    return new_type;
 }
 
-void type_check_loop(loop_class *loop, class__class *current_class)
+void ClassTable::type_check_loop(loop_class *loop, class__class *current_class)
 {
+    Expression loop_predicate = loop->get_predicate();
+    Expression loop_body = loop->get_body();
+    /* type check both predicate and body of the loop expression*/
+    type_check_expression(loop_predicate, current_class, Bool);
+    type_check_expression(loop_body, current_class, Object);
 }
 
-void decl_attr(attr_class *current_attr, class__class *current_class)
+/* check validity of attribute declaration*/
+void ClassTable::decl_attr(attr_class *current_attr, class__class *current_class)
 {
+    Symbol attribute_type = current_attr->get_type();
+    Class_ type = classes_table.lookup(attribute_type);
+
+    if (type == NULL && attribute_type != SELF_TYPE)
+    {
+        LOG_ERROR(current_class) << "Undeclared type" << attribute_type << endl;
+        return;
+    }
+
+    Symbol attr = current_attr->get_name();
+    Symbol current_class_name = current_class->get_name();
+
+    if (attr == self)
+    {
+        LOG_ERROR(current_class) << "Class" << current_class_name << " cannot have an attribute named self." << endl;
+        return;
+    }
+
+    Symbol existing_definition = symbol_table.lookup(attr);
+
+    if (existing_definition != NULL)
+    {
+        LOG_ERROR(current_class) << "Class " << current_class_name << " is redefining inherited attribute " << attr << endl;
+        return;
+    }
+
+    if (method_table.lookup(attr->get_name()) != NULL)
+    {
+        LOG_ERROR(current_class) << "Cannot redefine method " << attr << " as an attribute in Class " << current_class_name << endl;
+        return;
+    }
+
+    symbol_table.addid(attr, current_attr->get_type());
 }
 
-void decl_method(method_class *current_method, class__class *current_class)
+/* check the validity of method declarations */
+void ClassTable::decl_method(method_class *current_method, class__class *current_class)
 {
+    Formals formal_list = current_method->get_formals();
+    std::vector<Symbol> arguments;
+
+    /* handle arguments of the method */
+    for (int i = 0; i < (formal_list->len()); i++)
+    {
+        Symbol argument = (static_cast<formal_class *>(formal_list->nth(i)))->get_name();
+
+        if (argument == self)
+        {
+            LOG_ERROR(current_class) << "Method " << current_method->get_name() << "cannot bind self as a parameter." << endl;
+        }
+
+        for (Symbol existing_argument : arguments)
+        {
+            if (argument == existing_argument)
+            { /* Identifiers used in the formal arameter list must be distinct */
+                LOG_ERROR(current_class) << "Method " << current_method->get_name() << " has multiple arguments with the name " << name << endl;
+                return;
+            }
+        }
+        arguments.push_back(argument);
+    }
 }
 
 void ClassTable::type_check_eq(eq_class *eq, class__class *current_class)
@@ -456,12 +588,47 @@ bool ClassTable::is_descendant(Symbol desc, Symbol ancestor, class__class *curre
     return false;
 }
 
-Symbol handle_dispatch(Expression expr, Symbol name, Expressions arguments, Symbol dispatch_type, class__class *current_class)
+Symbol ClassTable::handle_dispatch(Expression expr, Symbol name, Expressions arguments, Symbol dispatch_type, class__class *current_class)
 {
 }
 
-Symbol type_union(Symbol t1, Symbol t2, class__class *current_class)
+Symbol ClassTable::type_union(Symbol t1, Symbol t2, class__class *current_class)
 {
+}
+
+/* Implementation of MethodDeclaration Struct in semant.h */
+MethodDeclaration MethodDeclaration::from_method_class(method_class *method)
+{
+    MethodDeclaration result;
+    result.return_type = method->get_return_type();
+    Formals formal_list = method->get_formals();
+
+    for (int i = 0; i < (formal_list->len()); i++)
+    {
+        formal_class *formal = static_cast<formal_class *>(formal_list->nth(i));
+        result.argument_types.push_back(formal->get_type());
+    }
+
+    return result;
+}
+
+bool MethodDeclaration::has_same_args(MethodDeclaration &other)
+{
+    return matches(other.argument_types);
+}
+
+bool MethodDeclaration::matches(std::vector<Symbol> &args)
+{
+    if (args.size() != this.argument_types.size())
+        return false; /*the formal parameters should be bound to the actual arguments*/
+
+    for (int i = 0; i < argument_types.size(); i++)
+    {
+        if (args[i] != this->argument_types[i])
+            return false; /* each argument type and parameter type must be same */
+    }
+
+    return true;
 }
 
 void ClassTable::install_basic_classes()
