@@ -85,34 +85,62 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0), error_stream(cerr)
     /* Fill this in */
 }
 
+void ClassTable::decl_class(class__class *current_class)
+{
+}
+
 void ClassTable::type_check_class(class__class *current_class)
 {
     Symbol class_name = current_class->get_name();
+
+    /* if is fine as long as the class is a primitive class */
+    bool should_type_check = class_name != Object &&
+                             class_name != Int &&
+                             class_name != Str &&
+                             class_name != Bool &&
+                             class_name != IO;
+    if (should_type_check)
+    {
+        Features features = current_class->get_features();
+        int features_len = features->len();
+        symbol_table = symbol_tables_by_classes[class_name];
+        method_table = method_tables_by_classes[class_name];
+        for (int i = 0; i < features_len; i++)
+        { /* type check features(attributes and methods)  */
+            Feature feature = features->nth(i);
+            switch (feature->feature_type())
+            {
+            case FeatureType::attr:
+                type_check_attr(static_cast<attr_class *>(feature), current_class);
+                break;
+            case FeatureType::method:
+                type_check_method(static_cast<method_class *>(feature), current_class);
+                break;
+            }
+        }
+    }
+
+    /* all the children of a class needs to be type checked recursively */
+    for (Symbol child : current_class->children)
+    {
+        Class__class *child_class = classes_table.lookup(child);
+        type_check_class(static_cast<class__class *>(child_class));
+    }
 }
 
 void ClassTable::type_check_attr(attr_class *current_attr, class_class *current_class)
 {
     Symbol expected_type = current_attr->get_type();
-    Symbol attr_name = current_attr->get_name();
-
-    /* add the attribute name to the symtable*/
-    //~ symbol_table.enterscope();
-    //~ symbol_table.addid(attr_name, expected_type);
-
-    Expression expr = current_attr->get_init(); /* initialization is optional */
+    Expression initialization = current_attr->get_init(); /* initialization is optional */
 
     /* type check the expression only if the initialization is present */
-    if (expr->expression_type())
+    if (initialization->expression_type() != ExpressionType::no_expr)
     {
-        type_check_expression(expr, current_class, expected_type);
+        type_check_expression(initialization, current_class, expected_type);
     }
-    //~ symbol_table.exitscope();
 }
 
-void ClassTable::type_check_
-
-    void
-    ClassTable::type_check_method(method_class *current_method, class__class *current_class)
+void ClassTable::type_check_method(method_class *current_method, class__class *current_class)
 {
     Expression expr = current_method->get_expression();
     Symbol return_type = current_method->get_return_type();
@@ -150,7 +178,7 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
 
     /* handle other expressions in COOL MANUAL page 17 */
     case ExpressionType::assign:
-        final_type = type_check_class(static_cast<assign_class *>(expr), current_class); /* the expression is typecasted to assign_class*/
+        final_type = type_check_assign(static_cast<assign_class *>(expr), current_class); /* the expression is typecasted to assign_class*/
         break;
 
     case ExpressionType::static_dispatch:
@@ -166,7 +194,8 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
         break;
 
     case ExpressionType::loop:
-        final_type = type_check_loop(static_cast<loop_class *>(expr), current_class);
+        final_type = Object;
+        type_check_loop(static_cast<loop_class *>(expr), current_class);
         break;
 
     case ExpressionType::block:
@@ -182,12 +211,12 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
         break;
 
     case ExpressionType::new_:
-        final_type = type_check_typcase(static_cast<new__class *>(expr), current_class);
+        final_type = type_check_new_(static_cast<new__class *>(expr), current_class);
         break;
 
     case ExpressionType::isvoid:
-        type_check_expression(static_cast<isvoid_class *>(expr)->get_operand(), current_class, Object);
         final_type = Bool;
+        type_check_expression(static_cast<isvoid_class *>(expr)->get_operand(), current_class, Object);
         break;
 
     case ExpressionType::plus:
@@ -223,8 +252,8 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
         break;
 
     case ExpressionType::neg:
-        type_check_expression(static_cast<neg_class *>(expr)->get_operand(), current_class, Int);
         final_type = Int;
+        type_check_expression(static_cast<neg_class *>(expr)->get_operand(), current_class, Int);
         break;
 
     case ExpressionType::lt:
@@ -244,14 +273,14 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
         break;
 
     case ExpressionType::eq:
-        type_check_eq(static_cast<eq_class *>(expr), current_class);
         final_type = Bool;
+        type_check_eq(static_cast<eq_class *>(expr), current_class);
         break;
 
     /* complement */
     case ExpressionType::comp:
-        type_check_expression(static_cast<comp_class *>(expr)->get_operand(), current_class, Bool);
         final_type = Bool;
+        type_check_expression(static_cast<comp_class *>(expr)->get_operand(), current_class, Bool);
         break;
 
     case ExpressionType::object:
@@ -263,11 +292,18 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
         final_type = No_type;
         break;
     case ExpressionType::invalid:
-        cerr << "Invalid Expression" << endl;
         final_type = Object;
+        cerr << "Invalid Expression" << endl;
         break;
 
     default:
+        cerr << "Unhandled Expression type " << endl;
+    }
+
+    if (No_type != final_type && !is_descendant(final_type, expected_type, current_class))
+    {
+        LOG_ERROR(current_class) << "Cannot convert from " << final_type << " to " << expected_type << endl;
+        final_type = Object;
     }
 
     expr->type = final_type;
@@ -276,10 +312,22 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
 
 Symbol ClassTable::type_check_assign(assign_class *assign, class__class *current_class)
 {
-    symbol_table.enterscope();
-    Symbol type = assign->get_type();
-
-    Symbol assign_type = type_check_expression(assign->get_expression(), current_class, ??); //TODO
+    Symbol type = Object;
+    Symbol name = assign->get_name();
+    if (name == self)
+    {
+        LOG_ERROR(current_class) << "Trying to assign to 'self'." << endl;
+    }
+    else
+    {
+        type = symbol_table.lookup(name);
+        if (type == NULL)
+        {
+            LOG_ERROR(current_class) << "Undeclared identifier in assignment: " << name << endl;
+        }
+    }
+    Symbol expr_type = type_check_expression(assign->get_expression(), current_class, type);
+    return expr_type;
 }
 
 Symbol ClassTable::type_check_let(let_class *let, class__class *current_class)
@@ -361,7 +409,7 @@ Symbol ClassTable::type_check_cond(cond_class *cond, class__class *current_class
     /*check the type of the predicate of the if(<condition>)*/
     type_check_expression(cond->get_predicate(), current_class, Bool);
     Symbol then_type = type_check_expression(cond->get_then_expression(), current_class, Object);
-    Symbol_else_type = type_check_expression(cond->get_else_expression(), current_class, Object);
+    Symbol else_type = type_check_expression(cond->get_else_expression(), current_class, Object);
     return type_union(then_type, else_type, current_class);
 }
 
@@ -371,9 +419,8 @@ Symbol ClassTable::type_check_typcase(typcase_class *typcase, class__class *curr
     type_check_expression(typcase->get_expression(), current_class, Object);
 
     Cases cases = typcase->get_cases();
-    int no_of_cases = cases->len()
-                          std::vector<Symbol>
-                              types_of_branches;
+    int no_of_cases = cases->len();
+    std::vector<Symbol> types_of_branches;
     Symbol return_type = nullptr;
 
     for (int i; i < no_of_cases; i++)
@@ -386,13 +433,30 @@ Symbol ClassTable::type_check_typcase(typcase_class *typcase, class__class *curr
 
         if (branch_type_ptr == NULL)
         {
-            LOG_ERROR(current_class)
-                << "Undefined type in case branch " << branch_type << endl;
+            LOG_ERROR(current_class) << "Undefined type in case branch " << branch_type << endl;
+            continue;
+        }
+        if (std::find(begin(types_of_branches), end(types_of_branches), branch_type) != end(types_of_branches))
+        {
+            LOG_ERROR(current_class) << "Several branches with the type " << branch_type << endl;
             continue;
         }
 
-        // TODO
+        types_of_branches.push_back(branch_type);
+        symbol_table.enterscope();
+        symbol_table.addid(branch_id, branch_type);
+        Symbol type = type_check_expression(branch->get_expression(), current_class, Object);
+        symbol_table.exitscope();
+
+        if (return_type == nullptr)
+        {
+            return_type = type;
+        }
+
+        return_type = type_union(type, branch_type, current_class);
     }
+
+    return return_type;
 }
 
 Symbol ClassTable::type_check_block(block_class *block, class__class *current_class)
@@ -428,36 +492,6 @@ Symbol ClassTable::type_check_object(object_class *object, class__class *current
     }
 
     return object_type;
-}
-
-Symbol ClassTable::type_check_let(let_class *let, class__class *current_class)
-{
-    symbol_table.enterscope();
-    Symbol let_type = let->get_type();
-    class__class *let_type_ptr = static_cast<class__class *>(classes_table.lookup(let_type));
-
-    /* check for entry of the type in the classes table(except for SELF_TYPE)*/
-    if (let_type_ptr == NULL && let_type != SELF_TYPE)
-    {
-        LOG_ERROR(current_class) << "Undefined type in let binding " << type << endl;
-        return Object;
-    }
-
-    Symbol let_id = let->get_identifier();
-
-    if (identifier == self)
-    {
-        LOG_ERROR(current_class) << "Trying to bind self in let binding" << endl;
-        return Object;
-    }
-
-    symbol_table.addid(let_id, let_type);
-    Expression let_init = let->get_init();
-    Expression let_body = let->get_body();
-    type_check_expression(let_init, current_class, let_type);
-    Symbol final_type = type_check_expression(let_body, current_class, Object);
-    symbol_table.exitscope();
-    return final_type;
 }
 
 Symbol ClassTable::type_check_new_(new__class *new_, class__class *current_class)
@@ -553,6 +587,12 @@ void ClassTable::decl_method(method_class *current_method, class__class *current
     }
 }
 
+bool invalid_comparison(Symbol a, Symbol b)
+{
+    bool has_basic_type = a == Int || a == Str || a == Bool;
+    return has_basic_type && a != b;
+}
+
 void ClassTable::type_check_eq(eq_class *eq, class__class *current_class)
 {
     Symbol left_type = type_check_expression(eq->get_left_operand(), current_class, Object);
@@ -588,12 +628,111 @@ bool ClassTable::is_descendant(Symbol desc, Symbol ancestor, class__class *curre
     return false;
 }
 
+/* handle method calling */
 Symbol ClassTable::handle_dispatch(Expression expr, Symbol name, Expressions arguments, Symbol dispatch_type, class__class *current_class)
 {
+    int no_of_arguments = arguments->len();
+
+    for (int i = 0; i < no_of_arguments; i++)
+    { /* the arguments of a method are evaluated in left to right order */
+        Expression arg = arguments->nth(i);
+        Symbol arg_type = type_check_expression(arg, current_class, Object);
+        if (arg_type == SELF_TYPE)
+        {
+            arg_type = current_class->get_name();
+        }
+        args.push_back(arg_type);
+    }
+
+    if (dispatch_type == SELF_TYPE)
+    {
+        dispatch_type = current_class->get_name();
+    }
+
+    if (method_tables_by_classes.find(dispatch_type) == std::end(method_tables_by_classes))
+    {
+        LOG_ERROR(current_class) << "Undefined method call: " << dispatch_type << "::" << name << endl;
+        return Object;
+    }
+
+    SymbolTable<Symbol, MethodDeclarations_> table = method_tables_by_classes[dispatch_type];
+    MethodDeclarations method_declarations = table.lookup(name);
+
+    if (method_declarations == NULL)
+    { /* the method declaration cannot be null */
+        LOG_ERROR(current_class) << "Undefined method call: " << dispatch_type << "::" << name << endl;
+        return Object;
+    }
+
+    class__class *dispatch_class = static_cast<class__class *>(classes_table.lookup(dispatch_type));
+    Symbol return_type = nullptr;
+
+    for (MethodDeclaration current_declaration : *method_declarations)
+    {
+        bool matches = true;
+        for (size_t i = 0; i < args.size(); i++)
+        {
+            if (!is_descendant(args[i], current_declaration.argument_types[i], dispatch_class))
+            { /* compare the arguments of the method declaration and the dispatch arguments*/
+                matches = false;
+                break;
+            }
+        }
+
+        if (matches)
+        {
+            return_type = current_declaration.return_type;
+            break;
+        }
+    }
+
+    if (return_type == nullptr) /* if types of declared and dispatched arguments dont match*/
+    {
+        LOG_ERROR(current_class) << "No matching declaration found for " << name << " with argument types ( ";
+        for (Symbol type : args)
+        {
+            error_stream << type << " ";
+        }
+        error_stream << ")" << endl;
+        return_type = Object;
+    }
+
+    return return_type;
 }
 
 Symbol ClassTable::type_union(Symbol t1, Symbol t2, class__class *current_class)
 {
+    std::stack<Symbol> t1_stack, t2_stack;
+    class__class *curr = static_cast<class__class *>(classes_table.lookup(t1));
+    while (curr != NULL)
+    {
+        t1_stack.push(curr->get_name());
+        curr = static_cast<class__class *>(classes_table.lookup(curr->get_parent()));
+    }
+    curr = static_cast<class__class *>(classes_table.lookup(t2));
+    while (curr != NULL)
+    {
+        t2_stack.push(curr->get_name());
+        curr = static_cast<class__class *>(classes_table.lookup(curr->get_parent()));
+    }
+
+    Symbol head_t1 = t1_stack.top();
+    t1_stack.pop();
+    Symbol head_t2 = t2_stack.top();
+    t2_stack.pop();
+    Symbol common_type = head_t1;
+    while (head_t2 == head_t1 && !t1_stack.empty() && !t2_stack.empty())
+    {
+        head_t1 = t1_stack.top();
+        t1_stack.pop();
+        head_t2 = t2_stack.top();
+        t2_stack.pop();
+        if (head_t2 == head_t1)
+        {
+            common_type = head_t1;
+        }
+    }
+    return common_type;
 }
 
 /* Implementation of MethodDeclaration Struct in semant.h */
@@ -608,15 +747,16 @@ MethodDeclaration MethodDeclaration::from_method_class(method_class *method)
         formal_class *formal = static_cast<formal_class *>(formal_list->nth(i));
         result.argument_types.push_back(formal->get_type());
     }
-
     return result;
 }
 
+/* compare arguments of two methods */
 bool MethodDeclaration::has_same_args(MethodDeclaration &other)
 {
     return matches(other.argument_types);
 }
 
+/* this is the function that implements the functionality for comparing two vectors of method arguments */
 bool MethodDeclaration::matches(std::vector<Symbol> &args)
 {
     if (args.size() != this.argument_types.size())
@@ -629,6 +769,25 @@ bool MethodDeclaration::matches(std::vector<Symbol> &args)
     }
 
     return true;
+}
+
+std::vector<Symbol> MethodDeclaration::get_undeclared_types(SymbolTable<Symbol, Class__class> &types)
+{
+    std::vector<Symbol> undeclared_types;
+
+    if (return_type != SELF_TYPE) /* SELF_TYPE is a return type */
+    {
+        if (types.lookup(return_type) == NULL) /* check for undeclared return type*/
+            undeclared_types.push_back(return_type);
+    }
+    for (Symbol type : argument_types) /* check for null typed arguments in argument_types in MethodDeclaration struct*/
+    {
+        if (types.lookup(type) == NULL)
+        {
+            undeclared_types.push_back(type);
+        }
+    }
+    return undeclared_types;
 }
 
 void ClassTable::install_basic_classes()
