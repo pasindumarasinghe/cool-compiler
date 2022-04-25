@@ -167,12 +167,14 @@ Write-up for PA4
 
 Type Checking of Expressions
 
-* typcase
+* typcase - case<expr> of [[ID:type=>expr;]]+ esac
 	- Check the type of the case expression
 	- Check types of each case branch(recover when undefined type found in a case branch)
 
-* loop
-	- Type check both the predicate abd the body of the loop expression
+* loop - while <expr> loop <expr> pool
+	- Type check both the predicate and the body of the loop expression
 
-* block
+* block - { <expr>; ... <expr>; }
 	- Type of the block expression is the type of the last block
+	- The expressions get evaluated in left to right order
+
