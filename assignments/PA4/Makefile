@@ -1,3 +1,6 @@
+
+ASSN = 4
+CLASS= cs143
 CLASSDIR=../.
 LIB= -lfl
 AR= gar
@@ -16,7 +19,7 @@ OBJS= ${CFIL:.cc=.o}
 OUTPUT= good.output bad.output
 
 
-CPPINCLUDE= -I. -I${CLASSDIR}/include/PA4 -I${CLASSDIR}/src/PA4
+CPPINCLUDE= -I. -I${CLASSDIR}/include/PA${ASSN} -I${CLASSDIR}/src/PA${ASSN}
 
 FFLAGS = -d8 -ocool-lex.cc
 BFLAGS = -d -v -y -b cool --debug -p cool_yy
@@ -80,4 +83,3 @@ clean-compile:
 	${SHELL} -ec '${DEPEND} $< | sed '\''s/\($*\.o\)[ :]*/\1 $@ : /g'\'' > $@'
 
 -include ${CFIL:.cc=.d}
-
