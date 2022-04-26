@@ -164,3 +164,139 @@ Instructions
 
 Write-up for PA4
 ----------------
+
+Check for Inheritance
+---------------------
+- Checking that the inheritance graph is well defined(All the restrictions on inheritance are satisfied).
+- Abort compilation if the inheritance graph is not well defined.
+
+Checking inheritance graph
+	- Inheriting from basic classes is restricted.
+	- Inheriting from a parent that does not exist is an error(It is an error if class A inherits from class B but class B is not defined)
+	- The inheritance graph should be asyclic. Mark the graph to be invalid if a cycle is found in the inheritance graph.
+	- The Main class needs to be present and the main() method needs to be inside it.
+
+
+Declaring classes, attributes, methods
+--------------------------------------
+Declare a class
+	- For each feature of a class, check whether the feature is a method or an attribute and declare the method or the attribute accordingly.
+	- Recursively declare the child classes of the current class.
+	- SELF_TYPE cannot be used as a class name as it might cause conflicts
+	- if there is a class already defined in the class table, throw an error indicating that the class is already there
+
+Checking validity of method declaration
+	- Identifiers used in the formal parameters list must be distinct
+	- Types of the method body must conform to the declared return type
+	- self cannot be bound as a parameter of a method
+	- The formal parameters are bound to the actual arguments.
+
+	* It should be stated that the information of a method is stored in a a seperate structure and the structure is stored in the method table
+		- attributes -> return_type : Return type of a method
+					 -> argument_types : a vector contains types of all arguments
+
+		- functions -> from_method_class : puts the details of a method to the structure
+					-> has_same_args : compare the arguments of 2 methods
+					-> matches : check whether the args of 2 methods are same or not comparing the arguments
+								 The formal parameters should be bound to the actual arguments. Each argument type and parameter type must be the same.
+					-> get_undeclared_types : check for any undeclared types in a method. check for undeclared return type and undeclared argument types.
+
+Checking validity of attribute declaration
+	- Check for undeclared types
+	- SELF_TYPE is considered an attribute type
+	- But, self cannot be an attribute of a class -> it is illegal to have attributes named 'self' [cool manual 7.2).
+	- Inherited attributes cannot be redefined.
+	- Both methods and attributes can't have the same names
+
+Handle method calling (handle dispatch)
+	- First, the arguments are evaluated in left to right order.
+	- Then, the caller class expression is evaluated.
+	- Next, the method gets invoked.
+	- Considering dispatch in the form of e0.f(e1,...,en), when no object is named, it resolves to self
+
+Type Checking
+--------------
+
+* The semantic analyser checks for valid types declared where required.
+* Upon encountering a type that is not specified by the rules, the semantic analyser recovers by assigning the type Object to any expression that cannot otherwise be given a type.
+
+class - Perform type checking on a class__class object. First, check whether a type check is necessary by looking at the class name.
+  Then, get the features of the class by calling current_class->get_features(). On attr and method type features, perform type checking
+  by calling type_check_attr() and type_check_method() functions. Lastly, call the same function recursively on all children of current_class.
+	- If the class name is a primitive class, there is no need of worrying about type_checking.
+	- Then the features of class needs to be checked for types.{attributes and methods}
+	- Recursively check types of each children of a class.
+
+methods - Function for type checking attribute feature type. If the current attribute is an expression, type check it by calling type_check_expression() method.
+	- Type checking of a method definition.
+	- Identifiers of formal parameters should be distinct
+	- The type of method body must conform to the return type specified
+	- The expected type should be a descendent of the final type.
+
+attributes: <id>:<type>[<- <expr>]
+	- Initialization is optional
+	- When no initialization is provided, the default initialization is used.
+
+
+
+Type Checking of Expressions
+
+assignment: <id> <- <expr>
+	- Static type conforms to the dynamic type
+	- Throws an error when assigned to self
+	- The value of assignment is the value of <expr>
+
+static dispatch: <expr_0>@<type>.id(<expr>,...,<expr>)
+	- The static type of <expr_0> must conform to the type of <type>
+
+dispatch
+	- The dispatch and the definition must have the same number of arguments.
+	- The static type of each actual parameter must conform to the corresponding formal parameter.
+
+conditionals: if <expr> then <expr> else <expr> fi
+	- First the predicate is evaluated(Predicate's type should be Bool).
+	- 'then' branch gets evaluated upon the predicate being true.
+	- The result of the conditional is the value of the branch which gets evaluated.
+
+typcase: case<expr> of [[ID:type=>expr;]]+ esac
+	- Check the type of the case expression
+	- Check types of each case branch(recover when undefined type found in a case branch)
+
+loop : while <expr> loop <expr> pool
+	- Type check both the predicate and the body of the loop expression
+
+block : { <expr>; ... <expr>; }
+	- Type of the block expression is the type of the last block
+	- The expressions get evaluated in left to right order
+
+new_ : {new <type>}
+	- new introduces a fresh object of the class
+	- if the type is SELF_TYPE then the object is a self object of the current scope.
+	- otherwise, the object type is <type> of the form new <type>
+
+object
+	- If the object is self, it is given SELF_TYPE.
+	- Lookup the declared object type in the symbol table
+	- If it is null give out an error and assign the "Object" type to the object
+
+let
+	- type check let initializations and bound results to their identifiers
+	- If initialization is ommitted the default initialization of the type is used
+	- then the body of the let is evaluated and the final type is the type of the let body
+	- Multiple identifiers of the same identifier
+		- If a let identifier is defined multiple times, the later definitions hide earlier ones(inner scoped hide outer scopes)
+		- type of init must convole to the declared type if the let identifier
+
+isvoid: isvoid expr
+	- evaluates to true if the expression is void and evaluates to false if the expression is false.
+
+Type Checking of arithmetic operations: <expr1> operation <expr2>
+	- <expr1> is evaluated first
+	- <expr2> is evaluated next
+	- 
+
+
+
+
+
+
