@@ -81,14 +81,144 @@ static void initialize_constants(void)
 }
 
 ClassTable::ClassTable(Classes classes) : semant_errors(0), error_stream(cerr)
-{
-    /* Fill this in */
+{ /* The constructor of the ClassTable*/
+
+    classes_table.enterscope();
+    symbol_table.enterscope();
+    method_table.enterscope();
+    classes = install_basic_classes(classes);
+
+    int classes_len = classes->len(); /* number of classes in the program */
+
+    // Go through all the classes and add them to the class table
+    for (int i = 0; i < classes_len; i++)
+    {
+        class__class *current_class = static_cast<class__class *>(classes->nth(i));
+        class__class *previous_def = static_cast<class__class *>(classes_table.lookup(current_class->get_name()));
+
+        if (current_class->get_name() == SELF_TYPE)
+        { /* SELF_TYPE can't be used as a class name as it might cause conflicts */
+            LOG_ERROR(current_class) << "SELF_TYPE is an invalid name for a class." << endl;
+            return;
+        }
+
+        if (previous_def != NULL)
+        { /* if there is a class already defined in the class table, throw an error indicating that the class is already there*/
+            LOG_ERROR(current_class) << "Class " << current_class->get_name() << " is already defined." << endl;
+            continue;
+        }
+        classes_table.addid(current_class->get_name(), current_class); // add the class to the class table
+    }
+
+    // Check inheritance graph
+    bool is_inheritance_graph_valid = true;
+    for (int i = 0; i < classes_len; i++)
+    {
+        class__class *current_class = static_cast<class__class *>(classes->nth(i));
+        std::vector<Symbol> parents;
+        while (current_class->get_name() != Object)
+        {
+            parents.push_back(current_class->get_name());
+            Symbol parent_symbol = current_class->get_parent();
+            class__class *parent = static_cast<class__class *>(classes_table.lookup(parent_symbol));
+            if (parent == NULL) /* inheriting from a parent that does not exist*/
+            {                   // It is an error if class A inherits from class B but class B is not defined
+                is_inheritance_graph_valid = false;
+                LOG_ERROR(current_class) << "Class " << current_class->get_name() << " cannot inherit class " << parent_symbol << " which was not found" << endl;
+                break;
+            }
+
+            if (parent_symbol == Int || parent_symbol == Str || parent_symbol == Bool || parent_symbol == SELF_TYPE)
+            { // Inheriting from a basic class is restricted.
+                is_inheritance_graph_valid = false;
+                LOG_ERROR(current_class) << "Class " << current_class->get_name() << " inherits from " << parent_symbol << ", which is not allowed." << endl;
+                break;
+            }
+
+            bool inheritance_cycle = false;
+            for (size_t j = 0; j < parents.size(); j++)
+            { // Check for cycles in the inheritence graph
+                if (parents[j] == parent_symbol)
+                {
+                    inheritance_cycle = true;
+                    LOG_ERROR(current_class) << "Class " << current_class->get_name() << " is involved in an inheritance cycle." << endl;
+                    break;
+                }
+            }
+
+            if (inheritance_cycle) /* if a cycle is found in the inheritance graph*/
+            {
+                is_inheritance_graph_valid = false;
+                break;
+            }
+
+            if (!parent->has_child(current_class->get_name()))
+            {
+                parent->children.push_back(current_class->get_name());
+            }
+
+            current_class = parent;
+        }
+    }
+
+    if (!is_inheritance_graph_valid)
+    { // abort the inheritence graph is invalid
+        return;
+    }
+
+    // For each class, traverse the AST and add
+    class__class *root_class = static_cast<class__class *>(classes_table.lookup(Object));
+    decl_class(root_class);
+    type_check_class(root_class);
+
+    // Check for Main class presence and for main() method inside it
+    class__class *main_class = static_cast<class__class *>(classes_table.lookup(Main));
+    if (main_class == NULL)
+    {
+        semant_error();
+        error_stream << "Class Main is not defined." << endl;
+    }
 }
 
+/* Function for declaring a new class. Followed by a call to a type_check_class() function. */
 void ClassTable::decl_class(class__class *current_class)
 {
+    Features features = current_class->get_features(); // get the feature list of a class
+    int features_len = features->len();                // number of features
+    symbol_table.enterscope();
+    method_table.enterscope();
+
+    for (int i = 0; i < features_len; i++)
+    {
+        /* for each feature of a class, check whether a feature is a attribute or a method and declare them accordingly*/
+        Feature feature = features->nth(i);
+        switch (feature->feature_type())
+        {
+        case FeatureType::attr:
+            decl_attr(static_cast<attr_class *>(feature), current_class);
+            break;
+        case FeatureType::method:
+            decl_method(static_cast<method_class *>(feature), current_class);
+            break;
+        }
+    }
+    method_tables_by_classes.emplace(current_class->get_name(), method_table);
+    symbol_tables_by_classes.emplace(current_class->get_name(), symbol_table);
+
+    for (Symbol child : current_class->children)
+    { /*recursively declare the child classes of the current class*/
+        Class__class *child_class = classes_table.lookup(child);
+        decl_class(static_cast<class__class *>(child_class));
+    }
+
+    method_table.exitscope();
+    symbol_table.exitscope()
 }
 
+/* Perform type checking on a class__class object. First, check whether a type check is necessary by looking at the class name.
+  Then, get the features of the class by calling current_class->get_features(). On attr and method type features, perform type checking
+  by calling type_check_attr() and type_check_method() functions. Lastly, call the same function recursively on all children of current_class.
+  */
 void ClassTable::type_check_class(class__class *current_class)
 {
     Symbol class_name = current_class->get_name();
@@ -128,6 +258,7 @@ void ClassTable::type_check_class(class__class *current_class)
     }
 }
 
+/* Function for type checking attribute feature type. If the current attribute is an expression, type check it by calling type_check_expression() method. */
 void ClassTable::type_check_attr(attr_class *current_attr, class_class *current_class)
 {
     Symbol expected_type = current_attr->get_type();
@@ -140,6 +271,7 @@ void ClassTable::type_check_attr(attr_class *current_attr, class_class *current_
     }
 }
 
+/* Function for type checking method feature type. Sample implementation is given in semant.cc */
 void ClassTable::type_check_method(method_class *current_method, class__class *current_class)
 {
     Expression expr = current_method->get_expression();
@@ -158,6 +290,9 @@ void ClassTable::type_check_method(method_class *current_method, class__class *c
     symbol_table.exitscope();
 }
 
+/* Function for type checking an expression. Get the expression type by calling expr->expression_type() and in a case statement call the
+  appropriate type_check function for the expression type.
+  For straight forward expression types, simply return its type. Eg.: For ExpressionType::int_const, assign final_type = Int; */
 void ClassTable::type_check_expression(Expression expr, class__class *current_class, Symbol expected_type)
 {
     Symbol expr_type = expr->expression_type();
@@ -298,6 +433,7 @@ void ClassTable::type_check_expression(Expression expr, class__class *current_cl
 
     default:
         cerr << "Unhandled Expression type " << endl;
+        break;
     }
 
     if (No_type != final_type && !is_descendant(final_type, expected_type, current_class))
@@ -522,6 +658,7 @@ void ClassTable::type_check_loop(loop_class *loop, class__class *current_class)
 }
 
 /* check validity of attribute declaration*/
+/* Check whether an attribute declaration is valid. Eg. Not a redefinition. Called by decl_class() function. */
 void ClassTable::decl_attr(attr_class *current_attr, class__class *current_class)
 {
     Symbol attribute_type = current_attr->get_type();
@@ -559,7 +696,8 @@ void ClassTable::decl_attr(attr_class *current_attr, class__class *current_class
     symbol_table.addid(attr, current_attr->get_type());
 }
 
-/* check the validity of method declarations */
+/* check the validity of method declarations.*/
+/* Check whether a method declaration is valid. Called by decl_class() function.*/
 void ClassTable::decl_method(method_class *current_method, class__class *current_class)
 {
     Formals formal_list = current_method->get_formals();
@@ -588,7 +726,7 @@ void ClassTable::decl_method(method_class *current_method, class__class *current
 }
 
 bool invalid_comparison(Symbol a, Symbol b)
-{
+{ /* check for illegal comparison between two types */
     bool has_basic_type = a == Int || a == Str || a == Bool;
     return has_basic_type && a != b;
 }
@@ -599,11 +737,11 @@ void ClassTable::type_check_eq(eq_class *eq, class__class *current_class)
     Symbol right_type = type_check_expression(eq->get_right_operand(), current_class, Object);
     if (invalid_comparison(left_type, right_type) || invalid_comparison(right_type, left_type))
     {
-        LOG_ERROR(current_class)
-            << "Illegal comparison between " << left_type << " and " << right_type << endl;
+        LOG_ERROR(current_class) << "Illegal comparison between " << left_type << " and " << right_type << endl;
     }
 }
 
+/* Establish the descendant status between two symbols.*/
 bool ClassTable::is_descendant(Symbol desc, Symbol ancestor, class__class *current_class)
 {
     if (desc == ancestor)
